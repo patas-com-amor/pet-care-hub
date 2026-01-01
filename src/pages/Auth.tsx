@@ -95,7 +95,7 @@ export default function Auth() {
             </div>
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Pet Shop Manager</h1>
+            <h1 className="text-3xl font-bold text-foreground">Pet Shop Patas com Amor</h1>
             <p className="text-muted-foreground mt-2">
               Sistema de gerenciamento para pet shops
             </p>
