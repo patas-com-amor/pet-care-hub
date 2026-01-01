@@ -4,6 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SettingsProvider } from "@/contexts/SettingsContext";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import Appointments from "./pages/Appointments";
 import Pets from "./pages/Pets";
@@ -15,34 +17,115 @@ import Employees from "./pages/Employees";
 import Financial from "./pages/Financial";
 import Settings from "./pages/Settings";
 import Department from "./pages/Department";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <SettingsProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/agendamentos" element={<Appointments />} />
-            <Route path="/pets" element={<Pets />} />
-            <Route path="/tutores" element={<Owners />} />
-            <Route path="/check-in" element={<CheckIn />} />
-            <Route path="/check-out" element={<CheckOut />} />
-            <Route path="/pacotes" element={<Packages />} />
-            <Route path="/colaboradores" element={<Employees />} />
-            <Route path="/financeiro" element={<Financial />} />
-            <Route path="/configuracoes" element={<Settings />} />
-            <Route path="/departamento/:id" element={<Department />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </SettingsProvider>
+    <AuthProvider>
+      <SettingsProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/agendamentos"
+                element={
+                  <ProtectedRoute>
+                    <Appointments />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/pets"
+                element={
+                  <ProtectedRoute>
+                    <Pets />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/tutores"
+                element={
+                  <ProtectedRoute>
+                    <Owners />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/check-in"
+                element={
+                  <ProtectedRoute>
+                    <CheckIn />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/check-out"
+                element={
+                  <ProtectedRoute>
+                    <CheckOut />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/pacotes"
+                element={
+                  <ProtectedRoute>
+                    <Packages />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/colaboradores"
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <Employees />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/financeiro"
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <Financial />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/configuracoes"
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <Settings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/departamento/:id"
+                element={
+                  <ProtectedRoute>
+                    <Department />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </SettingsProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
