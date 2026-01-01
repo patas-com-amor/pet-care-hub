@@ -1,6 +1,7 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   LayoutDashboard,
   Calendar,
@@ -19,6 +20,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Power,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -40,9 +42,15 @@ const departmentColors = {
 };
 
 export function Sidebar() {
-  const location = useLocation();
-  const { settings, isDepartmentEnabled } = useSettings();
+  const { isDepartmentEnabled } = useSettings();
+  const { user, isAdmin, signOut } = useAuth();
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
 
   const mainNavItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -58,8 +66,10 @@ export function Sidebar() {
 
   const businessNavItems = [
     { to: '/pacotes', icon: Package, label: 'Pacotes' },
-    { to: '/colaboradores', icon: UserCog, label: 'Colaboradores' },
-    { to: '/financeiro', icon: DollarSign, label: 'Financeiro' },
+    ...(isAdmin ? [
+      { to: '/colaboradores', icon: UserCog, label: 'Colaboradores' },
+      { to: '/financeiro', icon: DollarSign, label: 'Financeiro' },
+    ] : []),
   ];
 
   const NavItem = ({ to, icon: Icon, label, colorClass }: { to: string; icon: any; label: string; colorClass?: string }) => (
@@ -173,9 +183,30 @@ export function Sidebar() {
         </div>
       </nav>
 
-      {/* Settings */}
-      <div className="p-3 border-t border-sidebar-border">
-        <NavItem to="/configuracoes" icon={Settings} label="Configurações" />
+      {/* Settings & Logout */}
+      <div className="p-3 border-t border-sidebar-border space-y-1">
+        {isAdmin && (
+          <NavItem to="/configuracoes" icon={Settings} label="Configurações" />
+        )}
+        
+        {/* User info and logout */}
+        <div className="pt-2 border-t border-sidebar-border mt-2">
+          {!collapsed && user && (
+            <p className="text-xs text-muted-foreground px-3 mb-2 truncate">
+              {user.email}
+            </p>
+          )}
+          <button
+            onClick={handleSignOut}
+            className={cn(
+              'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full',
+              'text-sidebar-foreground hover:bg-destructive hover:text-destructive-foreground'
+            )}
+          >
+            <Power className="h-5 w-5 shrink-0" />
+            {!collapsed && <span className="font-medium">Sair</span>}
+          </button>
+        </div>
       </div>
     </aside>
   );
