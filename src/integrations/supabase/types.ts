@@ -14,95 +14,433 @@ export type Database = {
   }
   public: {
     Tables: {
-      agendamentos: {
+      appointments: {
         Row: {
-          cliente_nome: string | null
-          cliente_whatsapp: string | null
-          colaborador_id: string | null
-          created_at: string | null
-          horario: string
+          after_photo_url: string | null
+          before_photo_url: string | null
+          check_in_at: string | null
+          check_out_at: string | null
+          created_at: string
+          department_id: Database["public"]["Enums"]["department_id"]
+          employee_id: string | null
           id: string
-          origem: string | null
-          pet_nome: string
-          servico_id: string
-          status: string
+          notes: string | null
+          owner_id: string
+          package_id: string | null
+          pet_id: string
+          price: number
+          scheduled_at: string
+          service_id: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          updated_at: string
         }
         Insert: {
-          cliente_nome?: string | null
-          cliente_whatsapp?: string | null
-          colaborador_id?: string | null
-          created_at?: string | null
-          horario: string
+          after_photo_url?: string | null
+          before_photo_url?: string | null
+          check_in_at?: string | null
+          check_out_at?: string | null
+          created_at?: string
+          department_id: Database["public"]["Enums"]["department_id"]
+          employee_id?: string | null
           id?: string
-          origem?: string | null
-          pet_nome: string
-          servico_id: string
-          status?: string
+          notes?: string | null
+          owner_id: string
+          package_id?: string | null
+          pet_id: string
+          price?: number
+          scheduled_at: string
+          service_id: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
         }
         Update: {
-          cliente_nome?: string | null
-          cliente_whatsapp?: string | null
-          colaborador_id?: string | null
-          created_at?: string | null
-          horario?: string
+          after_photo_url?: string | null
+          before_photo_url?: string | null
+          check_in_at?: string | null
+          check_out_at?: string | null
+          created_at?: string
+          department_id?: Database["public"]["Enums"]["department_id"]
+          employee_id?: string | null
           id?: string
-          origem?: string | null
-          pet_nome?: string
-          servico_id?: string
-          status?: string
+          notes?: string | null
+          owner_id?: string
+          package_id?: string | null
+          pet_id?: string
+          price?: number
+          scheduled_at?: string
+          service_id?: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "agendamentos_colaborador_id_fkey"
-            columns: ["colaborador_id"]
+            foreignKeyName: "appointments_employee_id_fkey"
+            columns: ["employee_id"]
             isOneToOne: false
-            referencedRelation: "colaboradores"
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "agendamentos_servico_id_fkey"
-            columns: ["servico_id"]
+            foreignKeyName: "appointments_owner_id_fkey"
+            columns: ["owner_id"]
             isOneToOne: false
-            referencedRelation: "servicos_oferecidos"
+            referencedRelation: "owners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "service_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
             referencedColumns: ["id"]
           },
         ]
       }
-      colaboradores: {
+      customer_packages: {
         Row: {
-          created_at: string | null
+          created_at: string
+          expires_at: string
           id: string
-          nome: string
+          owner_id: string
+          package_id: string
+          pet_id: string
+          purchased_at: string
+          remaining_uses: number
+          used_appointments: string[] | null
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
+          expires_at: string
           id?: string
-          nome: string
+          owner_id: string
+          package_id: string
+          pet_id: string
+          purchased_at?: string
+          remaining_uses: number
+          used_appointments?: string[] | null
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
+          expires_at?: string
           id?: string
-          nome?: string
+          owner_id?: string
+          package_id?: string
+          pet_id?: string
+          purchased_at?: string
+          remaining_uses?: number
+          used_appointments?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_packages_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "owners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_packages_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "service_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_packages_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employees: {
+        Row: {
+          active: boolean
+          commission_enabled: boolean
+          commission_percentage: number | null
+          created_at: string
+          departments: Database["public"]["Enums"]["department_id"][] | null
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          photo_url: string | null
+          role: Database["public"]["Enums"]["employee_role"]
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          commission_enabled?: boolean
+          commission_percentage?: number | null
+          created_at?: string
+          departments?: Database["public"]["Enums"]["department_id"][] | null
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          photo_url?: string | null
+          role?: Database["public"]["Enums"]["employee_role"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          commission_enabled?: boolean
+          commission_percentage?: number | null
+          created_at?: string
+          departments?: Database["public"]["Enums"]["department_id"][] | null
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          photo_url?: string | null
+          role?: Database["public"]["Enums"]["employee_role"]
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
-      servicos_oferecidos: {
+      owners: {
         Row: {
-          created_at: string | null
+          address: string | null
+          cpf: string | null
+          created_at: string
+          email: string | null
           id: string
-          nome: string
+          name: string
+          phone: string | null
+          updated_at: string
+          whatsapp: string | null
         }
         Insert: {
-          created_at?: string | null
+          address?: string | null
+          cpf?: string | null
+          created_at?: string
+          email?: string | null
           id?: string
-          nome: string
+          name: string
+          phone?: string | null
+          updated_at?: string
+          whatsapp?: string | null
         }
         Update: {
-          created_at?: string | null
+          address?: string | null
+          cpf?: string | null
+          created_at?: string
+          email?: string | null
           id?: string
-          nome?: string
+          name?: string
+          phone?: string | null
+          updated_at?: string
+          whatsapp?: string | null
         }
         Relationships: []
+      }
+      pets: {
+        Row: {
+          allergies: string[] | null
+          behaviors: Json | null
+          birth_date: string | null
+          breed: string | null
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          owner_id: string
+          photo_url: string | null
+          size: Database["public"]["Enums"]["pet_size"]
+          species: Database["public"]["Enums"]["pet_species"]
+          updated_at: string
+        }
+        Insert: {
+          allergies?: string[] | null
+          behaviors?: Json | null
+          birth_date?: string | null
+          breed?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          owner_id: string
+          photo_url?: string | null
+          size?: Database["public"]["Enums"]["pet_size"]
+          species?: Database["public"]["Enums"]["pet_species"]
+          updated_at?: string
+        }
+        Update: {
+          allergies?: string[] | null
+          behaviors?: Json | null
+          birth_date?: string | null
+          breed?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          owner_id?: string
+          photo_url?: string | null
+          size?: Database["public"]["Enums"]["pet_size"]
+          species?: Database["public"]["Enums"]["pet_species"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pets_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "owners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_packages: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          discounted_price: number
+          id: string
+          name: string
+          original_price: number
+          quantity: number
+          service_id: string
+          updated_at: string
+          validity_days: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          discounted_price: number
+          id?: string
+          name: string
+          original_price: number
+          quantity?: number
+          service_id: string
+          updated_at?: string
+          validity_days?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          discounted_price?: number
+          id?: string
+          name?: string
+          original_price?: number
+          quantity?: number
+          service_id?: string
+          updated_at?: string
+          validity_days?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_packages_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      services: {
+        Row: {
+          active: boolean
+          commission_percentage: number | null
+          created_at: string
+          department_id: Database["public"]["Enums"]["department_id"]
+          duration: number
+          id: string
+          name: string
+          price: number
+        }
+        Insert: {
+          active?: boolean
+          commission_percentage?: number | null
+          created_at?: string
+          department_id: Database["public"]["Enums"]["department_id"]
+          duration?: number
+          id?: string
+          name: string
+          price?: number
+        }
+        Update: {
+          active?: boolean
+          commission_percentage?: number | null
+          created_at?: string
+          department_id?: Database["public"]["Enums"]["department_id"]
+          duration?: number
+          id?: string
+          name?: string
+          price?: number
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount: number
+          appointment_id: string | null
+          category: Database["public"]["Enums"]["transaction_category"]
+          created_at: string
+          date: string
+          description: string
+          employee_id: string | null
+          id: string
+          type: Database["public"]["Enums"]["transaction_type"]
+        }
+        Insert: {
+          amount: number
+          appointment_id?: string | null
+          category: Database["public"]["Enums"]["transaction_category"]
+          created_at?: string
+          date?: string
+          description: string
+          employee_id?: string | null
+          id?: string
+          type: Database["public"]["Enums"]["transaction_type"]
+        }
+        Update: {
+          amount?: number
+          appointment_id?: string | null
+          category?: Database["public"]["Enums"]["transaction_category"]
+          created_at?: string
+          date?: string
+          description?: string
+          employee_id?: string | null
+          id?: string
+          type?: Database["public"]["Enums"]["transaction_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -144,6 +482,31 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "colaborador"
+      appointment_status:
+        | "scheduled"
+        | "confirmed"
+        | "checked_in"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+      department_id: "estetica" | "saude" | "educacao" | "estadia" | "logistica"
+      employee_role:
+        | "admin"
+        | "manager"
+        | "groomer"
+        | "veterinarian"
+        | "trainer"
+        | "receptionist"
+        | "driver"
+      pet_size: "small" | "medium" | "large" | "giant"
+      pet_species: "dog" | "cat" | "bird" | "other"
+      transaction_category:
+        | "service"
+        | "product"
+        | "package"
+        | "commission"
+        | "other"
+      transaction_type: "income" | "expense"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -272,6 +635,34 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "colaborador"],
+      appointment_status: [
+        "scheduled",
+        "confirmed",
+        "checked_in",
+        "in_progress",
+        "completed",
+        "cancelled",
+      ],
+      department_id: ["estetica", "saude", "educacao", "estadia", "logistica"],
+      employee_role: [
+        "admin",
+        "manager",
+        "groomer",
+        "veterinarian",
+        "trainer",
+        "receptionist",
+        "driver",
+      ],
+      pet_size: ["small", "medium", "large", "giant"],
+      pet_species: ["dog", "cat", "bird", "other"],
+      transaction_category: [
+        "service",
+        "product",
+        "package",
+        "commission",
+        "other",
+      ],
+      transaction_type: ["income", "expense"],
     },
   },
 } as const
