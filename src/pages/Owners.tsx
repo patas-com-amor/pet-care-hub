@@ -23,66 +23,54 @@ import {
   MapPin,
   PawPrint,
   MessageCircle,
+  Loader2,
 } from 'lucide-react';
-
-// Mock owners data
-const mockOwners = [
-  {
-    id: '1',
-    name: 'Maria Silva',
-    email: 'maria@email.com',
-    phone: '(11) 99999-9999',
-    whatsapp: '5511999999999',
-    address: 'Rua das Flores, 123 - Centro',
-    cpf: '123.456.789-00',
-    pets: ['Thor'],
-    createdAt: '2023-01-15',
-  },
-  {
-    id: '2',
-    name: 'João Santos',
-    email: 'joao@email.com',
-    phone: '(11) 98888-8888',
-    whatsapp: '5511988888888',
-    address: 'Av. Brasil, 456 - Jardins',
-    cpf: '987.654.321-00',
-    pets: ['Luna', 'Max'],
-    createdAt: '2023-03-20',
-  },
-  {
-    id: '3',
-    name: 'Ana Costa',
-    email: 'ana@email.com',
-    phone: '(11) 97777-7777',
-    whatsapp: '5511977777777',
-    address: 'Rua do Comércio, 789 - Vila Nova',
-    cpf: '456.789.123-00',
-    pets: ['Bob'],
-    createdAt: '2023-05-10',
-  },
-  {
-    id: '4',
-    name: 'Pedro Oliveira',
-    email: 'pedro@email.com',
-    phone: '(11) 96666-6666',
-    whatsapp: '5511966666666',
-    address: 'Alameda Santos, 321 - Paulista',
-    cpf: '321.654.987-00',
-    pets: ['Mia', 'Nina'],
-    createdAt: '2023-07-05',
-  },
-];
+import { useOwners, useCreateOwner } from '@/hooks/useOwners';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Owners() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    whatsapp: '',
+    address: '',
+    cpf: '',
+  });
 
-  const filteredOwners = mockOwners.filter(
+  const { data: owners = [], isLoading } = useOwners();
+  const createOwner = useCreateOwner();
+
+  const filteredOwners = owners.filter(
     (owner) =>
       owner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      owner.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      owner.phone.includes(searchTerm)
+      (owner.email?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+      (owner.phone?.includes(searchTerm) ?? false)
   );
+
+  const handleSubmit = async () => {
+    if (!formData.name.trim()) return;
+    
+    await createOwner.mutateAsync({
+      name: formData.name,
+      email: formData.email || null,
+      phone: formData.phone || null,
+      whatsapp: formData.whatsapp || null,
+      address: formData.address || null,
+      cpf: formData.cpf || null,
+    });
+    
+    setFormData({ name: '', email: '', phone: '', whatsapp: '', address: '', cpf: '' });
+    setIsDialogOpen(false);
+  };
+
+  const handleWhatsApp = (whatsapp: string | null) => {
+    if (whatsapp) {
+      window.open(`https://wa.me/${whatsapp}`, '_blank');
+    }
+  };
 
   return (
     <MainLayout>
@@ -115,38 +103,75 @@ export default function Owners() {
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="ownerName">Nome Completo</Label>
-                    <Input id="ownerName" placeholder="Nome do tutor" />
+                    <Label htmlFor="ownerName">Nome Completo *</Label>
+                    <Input 
+                      id="ownerName" 
+                      placeholder="Nome do tutor"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="cpf">CPF</Label>
-                    <Input id="cpf" placeholder="000.000.000-00" />
+                    <Input 
+                      id="cpf" 
+                      placeholder="000.000.000-00"
+                      value={formData.cpf}
+                      onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="email">E-mail</Label>
-                    <Input id="email" type="email" placeholder="email@exemplo.com" />
+                    <Input 
+                      id="email" 
+                      type="email" 
+                      placeholder="email@exemplo.com"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone">Telefone</Label>
-                    <Input id="phone" placeholder="(00) 00000-0000" />
+                    <Input 
+                      id="phone" 
+                      placeholder="(00) 00000-0000"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="whatsapp">WhatsApp</Label>
-                  <Input id="whatsapp" placeholder="5500000000000" />
+                  <Input 
+                    id="whatsapp" 
+                    placeholder="5500000000000"
+                    value={formData.whatsapp}
+                    onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="address">Endereço</Label>
-                  <Input id="address" placeholder="Rua, número, bairro" />
+                  <Input 
+                    id="address" 
+                    placeholder="Rua, número, bairro"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  />
                 </div>
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button onClick={() => setIsDialogOpen(false)}>Salvar</Button>
+                <Button 
+                  onClick={handleSubmit} 
+                  disabled={!formData.name.trim() || createOwner.isPending}
+                >
+                  {createOwner.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Salvar
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -167,76 +192,123 @@ export default function Owners() {
           </CardContent>
         </Card>
 
-        {/* Owners Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredOwners.map((owner) => (
-            <Card
-              key={owner.id}
-              variant="elevated"
-              className="hover:shadow-lg transition-all cursor-pointer"
-            >
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <Avatar className="h-14 w-14 border-2 border-primary/20">
-                    <AvatarFallback className="bg-primary/10 text-primary text-lg">
-                      {owner.name
-                        .split(' ')
-                        .map((n) => n[0])
-                        .slice(0, 2)
-                        .join('')}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg text-foreground">
-                      {owner.name}
-                    </h3>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <PawPrint className="h-3 w-3" />
-                      <span>{owner.pets.length} pet(s)</span>
+        {/* Loading State */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} variant="elevated">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <Skeleton className="h-14 w-14 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-5 w-32" />
+                      <Skeleton className="h-4 w-20" />
                     </div>
                   </div>
-                </div>
+                  <div className="space-y-2 mt-4">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : filteredOwners.length === 0 ? (
+          <Card variant="bordered" className="p-12 text-center">
+            <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">
+              {searchTerm ? 'Nenhum tutor encontrado' : 'Nenhum tutor cadastrado'}
+            </h3>
+            <p className="text-muted-foreground">
+              {searchTerm ? 'Tente ajustar a busca' : 'Clique em "Novo Tutor" para cadastrar'}
+            </p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredOwners.map((owner) => (
+              <Card
+                key={owner.id}
+                variant="elevated"
+                className="hover:shadow-lg transition-all cursor-pointer"
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <Avatar className="h-14 w-14 border-2 border-primary/20">
+                      <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                        {owner.name
+                          .split(' ')
+                          .map((n) => n[0])
+                          .slice(0, 2)
+                          .join('')}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-lg text-foreground">
+                        {owner.name}
+                      </h3>
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <PawPrint className="h-3 w-3" />
+                        <span>{owner.pets?.length || 0} pet(s)</span>
+                      </div>
+                    </div>
+                  </div>
 
-                <div className="space-y-2 mt-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Phone className="h-4 w-4" />
-                    <span>{owner.phone}</span>
+                  <div className="space-y-2 mt-4">
+                    {owner.phone && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Phone className="h-4 w-4" />
+                        <span>{owner.phone}</span>
+                      </div>
+                    )}
+                    {owner.email && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Mail className="h-4 w-4" />
+                        <span>{owner.email}</span>
+                      </div>
+                    )}
+                    {owner.address && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <MapPin className="h-4 w-4" />
+                        <span className="truncate">{owner.address}</span>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Mail className="h-4 w-4" />
-                    <span>{owner.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <MapPin className="h-4 w-4" />
-                    <span className="truncate">{owner.address}</span>
-                  </div>
-                </div>
 
-                {/* Pets */}
-                <div className="mt-4">
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Pets:</p>
-                  <div className="flex flex-wrap gap-1">
-                    {owner.pets.map((pet, idx) => (
-                      <Badge key={idx} variant="secondary" className="text-xs">
-                        {pet}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
+                  {/* Pets */}
+                  {owner.pets && owner.pets.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Pets:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {owner.pets.map((pet) => (
+                          <Badge key={pet.id} variant="secondary" className="text-xs">
+                            {pet.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-                <div className="flex gap-2 mt-4">
-                  <Button variant="outline" size="sm" className="flex-1 gap-1">
-                    <MessageCircle className="h-3 w-3" />
-                    WhatsApp
-                  </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
-                    Ver Detalhes
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  <div className="flex gap-2 mt-4">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1 gap-1"
+                      onClick={() => handleWhatsApp(owner.whatsapp)}
+                      disabled={!owner.whatsapp}
+                    >
+                      <MessageCircle className="h-3 w-3" />
+                      WhatsApp
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1">
+                      Ver Detalhes
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </MainLayout>
   );

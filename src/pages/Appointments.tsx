@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -14,14 +14,14 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useSettings } from '@/contexts/SettingsContext';
 import { departments } from '@/data/departments';
-import { AppointmentStatus, DepartmentId } from '@/types';
+import { useAppointments, AppointmentStatus, DepartmentId } from '@/hooks/useAppointments';
+import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   Calendar,
   Plus,
   Search,
-  Filter,
   PawPrint,
   Clock,
   User,
@@ -46,69 +46,13 @@ const statusColors: Record<AppointmentStatus, string> = {
   cancelled: 'destructive',
 };
 
-// Mock appointments
-const mockAppointments = [
-  {
-    id: '1',
-    petName: 'Thor',
-    petBreed: 'Golden Retriever',
-    ownerName: 'Maria Silva',
-    ownerPhone: '(11) 99999-9999',
-    service: 'Banho + Tosa',
-    department: 'estetica' as DepartmentId,
-    scheduledAt: new Date().toISOString(),
-    status: 'confirmed' as AppointmentStatus,
-    price: 120,
-  },
-  {
-    id: '2',
-    petName: 'Luna',
-    petBreed: 'Shih Tzu',
-    ownerName: 'João Santos',
-    ownerPhone: '(11) 98888-8888',
-    service: 'Consulta Veterinária',
-    department: 'saude' as DepartmentId,
-    scheduledAt: new Date(Date.now() + 3600000).toISOString(),
-    status: 'scheduled' as AppointmentStatus,
-    price: 150,
-  },
-  {
-    id: '3',
-    petName: 'Bob',
-    petBreed: 'Labrador',
-    ownerName: 'Ana Costa',
-    ownerPhone: '(11) 97777-7777',
-    service: 'Daycare',
-    department: 'estadia' as DepartmentId,
-    scheduledAt: new Date(Date.now() - 1800000).toISOString(),
-    status: 'in_progress' as AppointmentStatus,
-    price: 80,
-  },
-  {
-    id: '4',
-    petName: 'Nina',
-    petBreed: 'Poodle',
-    ownerName: 'Pedro Oliveira',
-    ownerPhone: '(11) 96666-6666',
-    service: 'Adestramento',
-    department: 'educacao' as DepartmentId,
-    scheduledAt: new Date(Date.now() + 7200000).toISOString(),
-    status: 'confirmed' as AppointmentStatus,
-    price: 120,
-  },
-  {
-    id: '5',
-    petName: 'Rex',
-    petBreed: 'Pastor Alemão',
-    ownerName: 'Fernanda Lima',
-    ownerPhone: '(11) 95555-5555',
-    service: 'Leva e Traz',
-    department: 'logistica' as DepartmentId,
-    scheduledAt: new Date(Date.now() + 10800000).toISOString(),
-    status: 'scheduled' as AppointmentStatus,
-    price: 40,
-  },
-];
+const departmentLabels: Record<DepartmentId, string> = {
+  estetica: 'Estética',
+  saude: 'Saúde',
+  educacao: 'Educação',
+  estadia: 'Estadia',
+  logistica: 'Logística',
+};
 
 export default function Appointments() {
   const { isDepartmentEnabled } = useSettings();
@@ -116,19 +60,21 @@ export default function Appointments() {
   const [filterDepartment, setFilterDepartment] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
+  const { data: appointments = [], isLoading } = useAppointments();
+
   const enabledDepartments = departments.filter((dept) =>
     isDepartmentEnabled(dept.id)
   );
 
-  const filteredAppointments = mockAppointments.filter((apt) => {
+  const filteredAppointments = appointments.filter((apt) => {
     const matchesSearch =
-      apt.petName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      apt.ownerName.toLowerCase().includes(searchTerm.toLowerCase());
+      apt.pets?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      apt.owners?.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDepartment =
-      filterDepartment === 'all' || apt.department === filterDepartment;
+      filterDepartment === 'all' || apt.department_id === filterDepartment;
     const matchesStatus =
       filterStatus === 'all' || apt.status === filterStatus;
-    const deptEnabled = isDepartmentEnabled(apt.department);
+    const deptEnabled = isDepartmentEnabled(apt.department_id);
 
     return matchesSearch && matchesDepartment && matchesStatus && deptEnabled;
   });
@@ -198,7 +144,21 @@ export default function Appointments() {
 
         {/* Appointments List */}
         <div className="space-y-4">
-          {filteredAppointments.length === 0 ? (
+          {isLoading ? (
+            [1, 2, 3].map((i) => (
+              <Card key={i} variant="elevated">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <Skeleton className="h-12 w-12 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-5 w-40" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : filteredAppointments.length === 0 ? (
             <Card variant="bordered" className="p-12 text-center">
               <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">
@@ -226,10 +186,10 @@ export default function Appointments() {
                       </Avatar>
                       <div>
                         <h3 className="font-semibold text-foreground">
-                          {appointment.petName}
+                          {appointment.pets?.name || 'Pet não encontrado'}
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                          {appointment.petBreed}
+                          {appointment.pets?.breed || '-'}
                         </p>
                       </div>
                     </div>
@@ -239,18 +199,18 @@ export default function Appointments() {
                       <User className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <p className="font-medium text-foreground">
-                          {appointment.ownerName}
+                          {appointment.owners?.name || 'Tutor não encontrado'}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {appointment.ownerPhone}
+                          {appointment.owners?.phone || '-'}
                         </p>
                       </div>
                     </div>
 
                     {/* Service */}
                     <div className="flex-1">
-                      <Badge variant={appointment.department}>
-                        {appointment.service}
+                      <Badge variant={appointment.department_id as any}>
+                        {appointment.services?.name || departmentLabels[appointment.department_id]}
                       </Badge>
                     </div>
 
@@ -260,13 +220,13 @@ export default function Appointments() {
                         <div className="flex items-center gap-1 text-foreground">
                           <Clock className="h-4 w-4" />
                           <span className="font-medium">
-                            {format(new Date(appointment.scheduledAt), 'HH:mm', {
+                            {format(new Date(appointment.scheduled_at), 'HH:mm', {
                               locale: ptBR,
                             })}
                           </span>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          {format(new Date(appointment.scheduledAt), "d 'de' MMM", {
+                          {format(new Date(appointment.scheduled_at), "d 'de' MMM", {
                             locale: ptBR,
                           })}
                         </p>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -24,7 +24,8 @@ import {
 } from '@/components/ui/select';
 import { departments } from '@/data/departments';
 import { useSettings } from '@/contexts/SettingsContext';
-import { EmployeeRole, DepartmentId } from '@/types';
+import { useEmployees, useCreateEmployee, EmployeeRole, DepartmentId } from '@/hooks/useEmployees';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   UserCog,
   Plus,
@@ -33,6 +34,7 @@ import {
   Percent,
   Phone,
   Mail,
+  Loader2,
 } from 'lucide-react';
 
 const roleLabels: Record<EmployeeRole, string> = {
@@ -45,75 +47,52 @@ const roleLabels: Record<EmployeeRole, string> = {
   driver: 'Motorista',
 };
 
-// Mock employees
-const mockEmployees = [
-  {
-    id: '1',
-    name: 'Carlos Silva',
-    email: 'carlos@petshop.com',
-    phone: '(11) 98888-8888',
-    role: 'groomer' as EmployeeRole,
-    departments: ['estetica'] as DepartmentId[],
-    commissionEnabled: true,
-    commissionPercentage: 15,
-    active: true,
-    monthlyCommission: 1250,
-    servicesThisMonth: 45,
-  },
-  {
-    id: '2',
-    name: 'Ana Oliveira',
-    email: 'ana@petshop.com',
-    phone: '(11) 97777-7777',
-    role: 'groomer' as EmployeeRole,
-    departments: ['estetica'] as DepartmentId[],
-    commissionEnabled: true,
-    commissionPercentage: 12,
-    active: true,
-    monthlyCommission: 980,
-    servicesThisMonth: 38,
-  },
-  {
-    id: '3',
-    name: 'Dr. Pedro Santos',
-    email: 'pedro@petshop.com',
-    phone: '(11) 96666-6666',
-    role: 'veterinarian' as EmployeeRole,
-    departments: ['saude'] as DepartmentId[],
-    commissionEnabled: false,
-    commissionPercentage: 0,
-    active: true,
-    monthlyCommission: 0,
-    servicesThisMonth: 25,
-  },
-  {
-    id: '4',
-    name: 'Fernanda Lima',
-    email: 'fernanda@petshop.com',
-    phone: '(11) 95555-5555',
-    role: 'receptionist' as EmployeeRole,
-    departments: [],
-    commissionEnabled: false,
-    commissionPercentage: 0,
-    active: true,
-    monthlyCommission: 0,
-    servicesThisMonth: 0,
-  },
-];
-
 export default function Employees() {
   const { isDepartmentEnabled } = useSettings();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [commissionEnabled, setCommissionEnabled] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    role: 'groomer' as EmployeeRole,
+    departments: [] as DepartmentId[],
+    commission_enabled: false,
+    commission_percentage: 0,
+  });
+
+  const { data: employees = [], isLoading } = useEmployees();
+  const createEmployee = useCreateEmployee();
 
   const enabledDepartments = departments.filter((dept) =>
     isDepartmentEnabled(dept.id)
   );
 
-  const totalCommissions = mockEmployees.reduce(
-    (sum, emp) => sum + emp.monthlyCommission,
-    0
-  );
+  const handleSubmit = async () => {
+    if (!formData.name.trim()) return;
+
+    await createEmployee.mutateAsync({
+      name: formData.name,
+      email: formData.email || null,
+      phone: formData.phone || null,
+      role: formData.role,
+      departments: formData.departments,
+      commission_enabled: formData.commission_enabled,
+      commission_percentage: formData.commission_percentage,
+    });
+
+    setFormData({
+      name: '',
+      email: '',
+      phone: '',
+      role: 'groomer',
+      departments: [],
+      commission_enabled: false,
+      commission_percentage: 0,
+    });
+    setIsDialogOpen(false);
+  };
+
+  const activeEmployees = employees.filter(e => e.active);
 
   return (
     <MainLayout>
@@ -145,22 +124,38 @@ export default function Employees() {
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="empName">Nome Completo</Label>
-                  <Input id="empName" placeholder="Nome do colaborador" />
+                  <Label htmlFor="empName">Nome Completo *</Label>
+                  <Input 
+                    id="empName" 
+                    placeholder="Nome do colaborador"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="empEmail">E-mail</Label>
-                    <Input id="empEmail" type="email" placeholder="email@exemplo.com" />
+                    <Input 
+                      id="empEmail" 
+                      type="email" 
+                      placeholder="email@exemplo.com"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="empPhone">Telefone</Label>
-                    <Input id="empPhone" placeholder="(00) 00000-0000" />
+                    <Input 
+                      id="empPhone" 
+                      placeholder="(00) 00000-0000"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Função</Label>
-                  <Select>
+                  <Select value={formData.role} onValueChange={(v: EmployeeRole) => setFormData({ ...formData, role: v })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione a função" />
                     </SelectTrigger>
@@ -175,7 +170,10 @@ export default function Employees() {
                 </div>
                 <div className="space-y-2">
                   <Label>Departamentos</Label>
-                  <Select>
+                  <Select 
+                    value={formData.departments[0] || ''} 
+                    onValueChange={(v: DepartmentId) => setFormData({ ...formData, departments: [v] })}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione os departamentos" />
                     </SelectTrigger>
@@ -197,11 +195,11 @@ export default function Employees() {
                   </div>
                   <Switch
                     id="commission"
-                    checked={commissionEnabled}
-                    onCheckedChange={setCommissionEnabled}
+                    checked={formData.commission_enabled}
+                    onCheckedChange={(checked) => setFormData({ ...formData, commission_enabled: checked })}
                   />
                 </div>
-                {commissionEnabled && (
+                {formData.commission_enabled && (
                   <div className="space-y-2">
                     <Label htmlFor="commissionPercentage">Percentual de Comissão (%)</Label>
                     <Input
@@ -210,6 +208,8 @@ export default function Employees() {
                       placeholder="15"
                       min="0"
                       max="100"
+                      value={formData.commission_percentage}
+                      onChange={(e) => setFormData({ ...formData, commission_percentage: Number(e.target.value) })}
                     />
                   </div>
                 )}
@@ -218,13 +218,16 @@ export default function Employees() {
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button onClick={() => setIsDialogOpen(false)}>Salvar</Button>
+                <Button onClick={handleSubmit} disabled={!formData.name.trim() || createEmployee.isPending}>
+                  {createEmployee.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Salvar
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
         </div>
 
-        {/* Commission Summary */}
+        {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card variant="elevated">
             <CardContent className="p-6">
@@ -235,7 +238,7 @@ export default function Employees() {
                 <div>
                   <p className="text-sm text-muted-foreground">Total Comissões (Mês)</p>
                   <p className="text-2xl font-bold text-foreground">
-                    R$ {totalCommissions.toFixed(2)}
+                    R$ 0,00
                   </p>
                 </div>
               </div>
@@ -250,7 +253,7 @@ export default function Employees() {
                 <div>
                   <p className="text-sm text-muted-foreground">Colaboradores Ativos</p>
                   <p className="text-2xl font-bold text-foreground">
-                    {mockEmployees.filter((e) => e.active).length}
+                    {activeEmployees.length}
                   </p>
                 </div>
               </div>
@@ -264,9 +267,7 @@ export default function Employees() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Serviços Realizados (Mês)</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {mockEmployees.reduce((sum, e) => sum + e.servicesThisMonth, 0)}
-                  </p>
+                  <p className="text-2xl font-bold text-foreground">0</p>
                 </div>
               </div>
             </CardContent>
@@ -274,77 +275,95 @@ export default function Employees() {
         </div>
 
         {/* Employees List */}
-        <div className="grid gap-4">
-          {mockEmployees.map((employee) => (
-            <Card key={employee.id} variant="elevated" className="hover:shadow-lg transition-all">
-              <CardContent className="p-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {isLoading ? (
+          <div className="grid gap-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} variant="elevated">
+                <CardContent className="p-6">
                   <div className="flex items-center gap-4">
-                    <Avatar className="h-14 w-14 border-2 border-primary/20">
-                      <AvatarFallback className="bg-primary/10 text-primary text-lg">
-                        {employee.name
-                          .split(' ')
-                          .map((n) => n[0])
-                          .slice(0, 2)
-                          .join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h3 className="font-semibold text-lg text-foreground">
-                        {employee.name}
-                      </h3>
-                      <Badge variant="secondary">{roleLabels[employee.role]}</Badge>
-                      <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Phone className="h-3 w-3" />
-                          {employee.phone}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Mail className="h-3 w-3" />
-                          {employee.email}
-                        </span>
-                      </div>
+                    <Skeleton className="h-14 w-14 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-5 w-40" />
+                      <Skeleton className="h-4 w-24" />
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : employees.length === 0 ? (
+          <Card variant="bordered" className="p-12 text-center">
+            <UserCog className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">
+              Nenhum colaborador cadastrado
+            </h3>
+            <p className="text-muted-foreground">
+              Clique em "Novo Colaborador" para adicionar
+            </p>
+          </Card>
+        ) : (
+          <div className="grid gap-4">
+            {employees.map((employee) => (
+              <Card key={employee.id} variant="elevated" className="hover:shadow-lg transition-all">
+                <CardContent className="p-6">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-14 w-14 border-2 border-primary/20">
+                        <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                          {employee.name
+                            .split(' ')
+                            .map((n) => n[0])
+                            .slice(0, 2)
+                            .join('')}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <h3 className="font-semibold text-lg text-foreground">
+                          {employee.name}
+                        </h3>
+                        <Badge variant="secondary">{roleLabels[employee.role]}</Badge>
+                        <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                          {employee.phone && (
+                            <span className="flex items-center gap-1">
+                              <Phone className="h-3 w-3" />
+                              {employee.phone}
+                            </span>
+                          )}
+                          {employee.email && (
+                            <span className="flex items-center gap-1">
+                              <Mail className="h-3 w-3" />
+                              {employee.email}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
 
-                  <div className="flex items-center gap-6">
-                    {employee.commissionEnabled && (
-                      <>
+                    <div className="flex items-center gap-6">
+                      {employee.commission_enabled && (
                         <div className="text-center">
                           <div className="flex items-center gap-1 text-primary">
                             <Percent className="h-4 w-4" />
                             <span className="font-semibold">
-                              {employee.commissionPercentage}%
+                              {employee.commission_percentage}%
                             </span>
                           </div>
                           <p className="text-xs text-muted-foreground">Comissão</p>
                         </div>
-                        <div className="text-center">
-                          <p className="text-lg font-bold text-success">
-                            R$ {employee.monthlyCommission.toFixed(2)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">Este mês</p>
-                        </div>
-                      </>
-                    )}
-                    <div className="text-center">
-                      <p className="text-lg font-bold text-foreground">
-                        {employee.servicesThisMonth}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Serviços</p>
+                      )}
+                      <Badge variant={employee.active ? 'success' : 'secondary'}>
+                        {employee.active ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                      <Button variant="outline" size="sm">
+                        Editar
+                      </Button>
                     </div>
-                    <Badge variant={employee.active ? 'success' : 'secondary'}>
-                      {employee.active ? 'Ativo' : 'Inativo'}
-                    </Badge>
-                    <Button variant="outline" size="sm">
-                      Editar
-                    </Button>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </MainLayout>
   );
