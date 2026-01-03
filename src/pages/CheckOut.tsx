@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { useSettings } from '@/contexts/SettingsContext';
+import { useInProgressAppointments, useCheckOut, AppointmentWithDetails } from '@/hooks/useAppointments';
 import {
   LogOut,
   Search,
@@ -26,49 +27,27 @@ import {
   Upload,
   Send,
   CheckCircle,
+  Loader2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-// Mock appointments in progress
-const mockInProgress = [
-  {
-    id: '1',
-    petName: 'Thor',
-    petBreed: 'Golden Retriever',
-    ownerName: 'Maria Silva',
-    ownerWhatsapp: '5511999999999',
-    service: 'Banho + Tosa',
-    department: 'estetica',
-    checkInAt: new Date(Date.now() - 3600000).toISOString(),
-    price: 120,
-  },
-  {
-    id: '3',
-    petName: 'Bob',
-    petBreed: 'Labrador',
-    ownerName: 'Ana Costa',
-    ownerWhatsapp: '5511977777777',
-    service: 'Daycare',
-    department: 'estadia',
-    checkInAt: new Date(Date.now() - 7200000).toISOString(),
-    price: 80,
-  },
-];
-
 export default function CheckOut() {
   const { settings } = useSettings();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedAppointment, setSelectedAppointment] = useState<typeof mockInProgress[0] | null>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithDetails | null>(null);
   const [afterPhoto, setAfterPhoto] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const filteredAppointments = mockInProgress.filter(
+  const { data: inProgressAppointments, isLoading } = useInProgressAppointments();
+  const checkOutMutation = useCheckOut();
+
+  const filteredAppointments = (inProgressAppointments || []).filter(
     (apt) =>
-      apt.petName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      apt.ownerName.toLowerCase().includes(searchTerm.toLowerCase())
+      apt.pets?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      apt.owners?.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -88,32 +67,46 @@ export default function CheckOut() {
     setIsProcessing(true);
 
     try {
-      // Send notification via n8n webhook
-      const response = await fetch(settings.n8nWebhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          type: 'checkout',
-          petName: selectedAppointment.petName,
-          ownerName: selectedAppointment.ownerName,
-          ownerWhatsapp: selectedAppointment.ownerWhatsapp,
-          service: selectedAppointment.service,
-          afterPhoto: afterPhoto,
-          notes: notes,
-          checkoutAt: new Date().toISOString(),
-        }),
+      // Update appointment in database
+      await checkOutMutation.mutateAsync({
+        id: selectedAppointment.id,
+        afterPhotoUrl: afterPhoto || undefined,
+        notes: notes || undefined,
       });
 
-      toast.success(`Check-out realizado para ${selectedAppointment.petName}!`, {
-        description: 'Notificação enviada ao tutor via WhatsApp.',
-      });
+      // Send notification via n8n webhook if configured
+      if (settings.n8nWebhookUrl) {
+        try {
+          await fetch(settings.n8nWebhookUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              type: 'checkout',
+              petName: selectedAppointment.pets?.name,
+              ownerName: selectedAppointment.owners?.name,
+              ownerWhatsapp: selectedAppointment.owners?.whatsapp,
+              service: selectedAppointment.services?.name,
+              afterPhoto: afterPhoto,
+              notes: notes,
+              checkoutAt: new Date().toISOString(),
+            }),
+          });
+          toast.success(`Check-out realizado para ${selectedAppointment.pets?.name}!`, {
+            description: 'Notificação enviada ao tutor via WhatsApp.',
+          });
+        } catch (error) {
+          console.error('Error sending webhook:', error);
+          toast.success(`Check-out realizado para ${selectedAppointment.pets?.name}!`, {
+            description: 'Notificação via WhatsApp não pôde ser enviada.',
+          });
+        }
+      } else {
+        toast.success(`Check-out realizado para ${selectedAppointment.pets?.name}!`);
+      }
     } catch (error) {
-      console.error('Error sending webhook:', error);
-      toast.success(`Check-out realizado para ${selectedAppointment.petName}!`, {
-        description: 'Notificação via WhatsApp não pôde ser enviada.',
-      });
+      toast.error('Erro ao realizar check-out');
     }
 
     setIsProcessing(false);
@@ -157,7 +150,12 @@ export default function CheckOut() {
             Em Atendimento ({filteredAppointments.length})
           </h2>
 
-          {filteredAppointments.length === 0 ? (
+          {isLoading ? (
+            <Card variant="bordered" className="p-12 text-center">
+              <Loader2 className="h-12 w-12 text-primary mx-auto mb-4 animate-spin" />
+              <p className="text-muted-foreground">Carregando atendimentos...</p>
+            </Card>
+          ) : filteredAppointments.length === 0 ? (
             <Card variant="bordered" className="p-12 text-center">
               <CheckCircle className="h-12 w-12 text-success mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">
@@ -185,13 +183,13 @@ export default function CheckOut() {
                         </Avatar>
                         <div>
                           <h3 className="font-semibold text-lg text-foreground">
-                            {appointment.petName}
+                            {appointment.pets?.name || 'Pet'}
                           </h3>
                           <p className="text-sm text-muted-foreground">
-                            {appointment.petBreed}
+                            {appointment.pets?.breed || 'Sem raça definida'}
                           </p>
-                          <Badge variant={appointment.department as any} className="mt-1">
-                            {appointment.service}
+                          <Badge variant={appointment.department_id as any} className="mt-1">
+                            {appointment.services?.name || 'Serviço'}
                           </Badge>
                         </div>
                       </div>
@@ -200,22 +198,23 @@ export default function CheckOut() {
                         <div className="text-sm">
                           <div className="flex items-center gap-1 text-muted-foreground">
                             <User className="h-4 w-4" />
-                            <span>{appointment.ownerName}</span>
+                            <span>{appointment.owners?.name || 'Tutor'}</span>
                           </div>
                           <div className="flex items-center gap-1 text-muted-foreground mt-1">
                             <Clock className="h-4 w-4" />
                             <span>
                               Check-in às{' '}
-                              {format(new Date(appointment.checkInAt), 'HH:mm', {
-                                locale: ptBR,
-                              })}
+                              {appointment.check_in_at 
+                                ? format(new Date(appointment.check_in_at), 'HH:mm', { locale: ptBR })
+                                : '--:--'
+                              }
                             </span>
                           </div>
                         </div>
 
                         <div className="text-right">
                           <p className="text-lg font-semibold text-foreground">
-                            R$ {appointment.price.toFixed(2)}
+                            R$ {Number(appointment.price).toFixed(2)}
                           </p>
                         </div>
 
@@ -241,7 +240,7 @@ export default function CheckOut() {
         <Dialog open={!!selectedAppointment} onOpenChange={() => setSelectedAppointment(null)}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Check-out - {selectedAppointment?.petName}</DialogTitle>
+              <DialogTitle>Check-out - {selectedAppointment?.pets?.name}</DialogTitle>
               <DialogDescription>
                 Faça upload da foto do pet e envie uma notificação ao tutor
               </DialogDescription>
@@ -303,16 +302,16 @@ export default function CheckOut() {
               <div className="p-4 bg-secondary/50 rounded-lg space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Serviço:</span>
-                  <span className="font-medium">{selectedAppointment?.service}</span>
+                  <span className="font-medium">{selectedAppointment?.services?.name}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Tutor:</span>
-                  <span className="font-medium">{selectedAppointment?.ownerName}</span>
+                  <span className="font-medium">{selectedAppointment?.owners?.name}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Valor:</span>
                   <span className="font-semibold text-success">
-                    R$ {selectedAppointment?.price.toFixed(2)}
+                    R$ {Number(selectedAppointment?.price || 0).toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -329,7 +328,7 @@ export default function CheckOut() {
               >
                 {isProcessing ? (
                   <>
-                    <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     Processando...
                   </>
                 ) : (

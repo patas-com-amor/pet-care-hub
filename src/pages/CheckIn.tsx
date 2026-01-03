@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from 'sonner';
+import { usePendingCheckIn, useCheckIn } from '@/hooks/useAppointments';
 import {
   LogIn,
   Search,
@@ -13,62 +14,31 @@ import {
   Clock,
   User,
   CheckCircle,
+  Loader2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-// Mock appointments waiting for check-in
-const mockPendingCheckIn = [
-  {
-    id: '1',
-    petName: 'Thor',
-    petBreed: 'Golden Retriever',
-    ownerName: 'Maria Silva',
-    service: 'Banho + Tosa',
-    department: 'estetica',
-    scheduledAt: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    petName: 'Luna',
-    petBreed: 'Shih Tzu',
-    ownerName: 'João Santos',
-    service: 'Consulta Veterinária',
-    department: 'saude',
-    scheduledAt: new Date(Date.now() + 3600000).toISOString(),
-  },
-  {
-    id: '4',
-    petName: 'Nina',
-    petBreed: 'Poodle',
-    ownerName: 'Pedro Oliveira',
-    service: 'Adestramento',
-    department: 'educacao',
-    scheduledAt: new Date(Date.now() + 7200000).toISOString(),
-  },
-];
-
 export default function CheckIn() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [processingId, setProcessingId] = useState<string | null>(null);
+  const { data: pendingAppointments, isLoading } = usePendingCheckIn();
+  const checkInMutation = useCheckIn();
 
-  const filteredAppointments = mockPendingCheckIn.filter(
+  const filteredAppointments = (pendingAppointments || []).filter(
     (apt) =>
-      apt.petName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      apt.ownerName.toLowerCase().includes(searchTerm.toLowerCase())
+      apt.pets?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      apt.owners?.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleCheckIn = async (appointmentId: string, petName: string) => {
-    setProcessingId(appointmentId);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast.success(`Check-in realizado para ${petName}!`, {
-      description: 'O pet foi registrado e pode iniciar o atendimento.',
-    });
-    
-    setProcessingId(null);
+    try {
+      await checkInMutation.mutateAsync(appointmentId);
+      toast.success(`Check-in realizado para ${petName}!`, {
+        description: 'O pet foi registrado e pode iniciar o atendimento.',
+      });
+    } catch (error) {
+      toast.error('Erro ao realizar check-in');
+    }
   };
 
   return (
@@ -106,7 +76,12 @@ export default function CheckIn() {
             Aguardando Check-in ({filteredAppointments.length})
           </h2>
 
-          {filteredAppointments.length === 0 ? (
+          {isLoading ? (
+            <Card variant="bordered" className="p-12 text-center">
+              <Loader2 className="h-12 w-12 text-primary mx-auto mb-4 animate-spin" />
+              <p className="text-muted-foreground">Carregando agendamentos...</p>
+            </Card>
+          ) : filteredAppointments.length === 0 ? (
             <Card variant="bordered" className="p-12 text-center">
               <CheckCircle className="h-12 w-12 text-success mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">
@@ -134,13 +109,13 @@ export default function CheckIn() {
                         </Avatar>
                         <div>
                           <h3 className="font-semibold text-lg text-foreground">
-                            {appointment.petName}
+                            {appointment.pets?.name || 'Pet'}
                           </h3>
                           <p className="text-sm text-muted-foreground">
-                            {appointment.petBreed}
+                            {appointment.pets?.breed || 'Sem raça definida'}
                           </p>
-                          <Badge variant={appointment.department as any} className="mt-1">
-                            {appointment.service}
+                          <Badge variant={appointment.department_id as any} className="mt-1">
+                            {appointment.services?.name || 'Serviço'}
                           </Badge>
                         </div>
                       </div>
@@ -149,13 +124,13 @@ export default function CheckIn() {
                         <div className="text-sm">
                           <div className="flex items-center gap-1 text-muted-foreground">
                             <User className="h-4 w-4" />
-                            <span>{appointment.ownerName}</span>
+                            <span>{appointment.owners?.name || 'Tutor'}</span>
                           </div>
                           <div className="flex items-center gap-1 text-muted-foreground mt-1">
                             <Clock className="h-4 w-4" />
                             <span>
                               Agendado para{' '}
-                              {format(new Date(appointment.scheduledAt), 'HH:mm', {
+                              {format(new Date(appointment.scheduled_at), 'HH:mm', {
                                 locale: ptBR,
                               })}
                             </span>
@@ -166,12 +141,12 @@ export default function CheckIn() {
                           variant="success"
                           size="lg"
                           className="gap-2"
-                          onClick={() => handleCheckIn(appointment.id, appointment.petName)}
-                          disabled={processingId === appointment.id}
+                          onClick={() => handleCheckIn(appointment.id, appointment.pets?.name || 'Pet')}
+                          disabled={checkInMutation.isPending}
                         >
-                          {processingId === appointment.id ? (
+                          {checkInMutation.isPending ? (
                             <>
-                              <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                              <Loader2 className="h-4 w-4 animate-spin" />
                               Processando...
                             </>
                           ) : (
