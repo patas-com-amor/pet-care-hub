@@ -1,5 +1,4 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import {
   CalendarPlus,
@@ -15,7 +14,7 @@ const quickActions = [
     icon: CalendarPlus,
     label: 'Novo Agendamento',
     description: 'Agendar um serviço',
-    to: '/agendamentos/novo',
+    to: '/agendamentos',
     color: 'bg-primary/10 text-primary hover:bg-primary/20',
   },
   {
@@ -29,14 +28,14 @@ const quickActions = [
     icon: PawPrint,
     label: 'Novo Pet',
     description: 'Cadastrar pet',
-    to: '/pets/novo',
+    to: '/pets',
     color: 'bg-accent/10 text-accent hover:bg-accent/20',
   },
   {
     icon: UserPlus,
     label: 'Novo Tutor',
     description: 'Cadastrar tutor',
-    to: '/tutores/novo',
+    to: '/tutores',
     color: 'bg-info/10 text-info hover:bg-info/20',
   },
   {
