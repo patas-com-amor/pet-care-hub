@@ -21,10 +21,27 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useSettings } from '@/contexts/SettingsContext';
 import { departments } from '@/data/departments';
-import { useAppointments, useCreateAppointment, AppointmentStatus, DepartmentId } from '@/hooks/useAppointments';
+import { useAppointments, useCreateAppointment, useUpdateAppointment, useDeleteAppointment, AppointmentStatus, DepartmentId, AppointmentWithDetails } from '@/hooks/useAppointments';
 import { useOwners } from '@/hooks/useOwners';
 import { usePets } from '@/hooks/usePets';
 import { useServices } from '@/hooks/useServices';
@@ -41,6 +58,10 @@ import {
   User,
   MoreVertical,
   Loader2,
+  Pencil,
+  Trash2,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 
 const statusLabels: Record<AppointmentStatus, string> = {
@@ -75,6 +96,8 @@ export default function Appointments() {
   const [filterDepartment, setFilterDepartment] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingAppointment, setEditingAppointment] = useState<AppointmentWithDetails | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     owner_id: '',
     pet_id: '',
@@ -92,6 +115,8 @@ export default function Appointments() {
   const { data: services = [] } = useServices();
   const { data: employees = [] } = useEmployees();
   const createAppointment = useCreateAppointment();
+  const updateAppointment = useUpdateAppointment();
+  const deleteAppointment = useDeleteAppointment();
 
   const enabledDepartments = departments.filter((dept) =>
     isDepartmentEnabled(dept.id)
@@ -114,6 +139,10 @@ export default function Appointments() {
 
   const selectedService = services.find(s => s.id === formData.service_id);
 
+  const resetForm = () => {
+    setFormData({ owner_id: '', pet_id: '', department_id: '', service_id: '', employee_id: '', scheduled_at: '', scheduled_time: '', notes: '' });
+  };
+
   const handleSubmit = async () => {
     if (!formData.owner_id || !formData.pet_id || !formData.department_id || !formData.service_id || !formData.scheduled_at || !formData.scheduled_time) return;
     
@@ -130,8 +159,50 @@ export default function Appointments() {
       notes: formData.notes || null,
     });
     
-    setFormData({ owner_id: '', pet_id: '', department_id: '', service_id: '', employee_id: '', scheduled_at: '', scheduled_time: '', notes: '' });
+    resetForm();
     setIsDialogOpen(false);
+  };
+
+  const handleEdit = (appointment: AppointmentWithDetails) => {
+    const scheduledDate = new Date(appointment.scheduled_at);
+    setFormData({
+      owner_id: appointment.owner_id,
+      pet_id: appointment.pet_id,
+      department_id: appointment.department_id,
+      service_id: appointment.service_id,
+      employee_id: appointment.employee_id || '',
+      scheduled_at: format(scheduledDate, 'yyyy-MM-dd'),
+      scheduled_time: format(scheduledDate, 'HH:mm'),
+      notes: appointment.notes || '',
+    });
+    setEditingAppointment(appointment);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingAppointment || !formData.scheduled_at || !formData.scheduled_time) return;
+    
+    const scheduledAt = new Date(`${formData.scheduled_at}T${formData.scheduled_time}`);
+    
+    await updateAppointment.mutateAsync({
+      id: editingAppointment.id,
+      service_id: formData.service_id,
+      employee_id: formData.employee_id || null,
+      scheduled_at: scheduledAt.toISOString(),
+      notes: formData.notes || null,
+    });
+    
+    resetForm();
+    setEditingAppointment(null);
+  };
+
+  const handleStatusChange = async (id: string, status: AppointmentStatus) => {
+    await updateAppointment.mutateAsync({ id, status });
+  };
+
+  const handleDelete = async () => {
+    if (!deleteConfirmId) return;
+    await deleteAppointment.mutateAsync(deleteConfirmId);
+    setDeleteConfirmId(null);
   };
 
   const filteredAppointments = appointments.filter((apt) => {
@@ -439,9 +510,39 @@ export default function Appointments() {
                       <Badge variant={statusColors[appointment.status] as any}>
                         {statusLabels[appointment.status]}
                       </Badge>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleEdit(appointment)}>
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Editar
+                          </DropdownMenuItem>
+                          {appointment.status !== 'completed' && appointment.status !== 'cancelled' && (
+                            <>
+                              <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'confirmed')}>
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Confirmar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'cancelled')}>
+                                <XCircle className="h-4 w-4 mr-2" />
+                                Cancelar
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => setDeleteConfirmId(appointment.id)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </CardContent>
@@ -449,6 +550,73 @@ export default function Appointments() {
             ))
           )}
         </div>
+
+        {/* Edit Dialog */}
+        <Dialog open={!!editingAppointment} onOpenChange={(open) => !open && (setEditingAppointment(null), resetForm())}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Editar Agendamento</DialogTitle>
+              <DialogDescription>
+                Atualize os dados do agendamento
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Data *</Label>
+                  <Input
+                    type="date"
+                    value={formData.scheduled_at}
+                    onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Horário *</Label>
+                  <Input
+                    type="time"
+                    value={formData.scheduled_time}
+                    onChange={(e) => setFormData({ ...formData, scheduled_time: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Observações</Label>
+                <Textarea
+                  placeholder="Informações adicionais..."
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => (setEditingAppointment(null), resetForm())}>
+                Cancelar
+              </Button>
+              <Button onClick={handleUpdate} disabled={updateAppointment.isPending}>
+                {updateAppointment.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Salvar
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation */}
+        <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir agendamento?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação não pode ser desfeita. O agendamento será removido permanentemente.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                {deleteAppointment.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Excluir'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </MainLayout>
   );
