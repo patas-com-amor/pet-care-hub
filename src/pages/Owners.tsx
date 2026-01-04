@@ -24,13 +24,16 @@ import {
   PawPrint,
   MessageCircle,
   Loader2,
+  CreditCard,
+  Calendar,
 } from 'lucide-react';
-import { useOwners, useCreateOwner } from '@/hooks/useOwners';
+import { useOwners, useCreateOwner, OwnerWithPets } from '@/hooks/useOwners';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Owners() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedOwner, setSelectedOwner] = useState<OwnerWithPets | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -300,7 +303,12 @@ export default function Owners() {
                       <MessageCircle className="h-3 w-3" />
                       WhatsApp
                     </Button>
-                    <Button variant="outline" size="sm" className="flex-1">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => setSelectedOwner(owner)}
+                    >
                       Ver Detalhes
                     </Button>
                   </div>
@@ -309,6 +317,86 @@ export default function Owners() {
             ))}
           </div>
         )}
+
+        {/* Owner Details Dialog */}
+        <Dialog open={!!selectedOwner} onOpenChange={(open) => !open && setSelectedOwner(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                Detalhes do Tutor
+              </DialogTitle>
+            </DialogHeader>
+            {selectedOwner && (
+              <div className="space-y-6 py-4">
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-20 w-20 border-2 border-primary/20">
+                    <AvatarFallback className="bg-primary/10 text-primary text-2xl">
+                      {selectedOwner.name.split(' ').map((n) => n[0]).slice(0, 2).join('')}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h2 className="text-2xl font-bold text-foreground">{selectedOwner.name}</h2>
+                    {selectedOwner.cpf && (
+                      <p className="text-sm text-muted-foreground flex items-center gap-1">
+                        <CreditCard className="h-3 w-3" />
+                        CPF: {selectedOwner.cpf}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-foreground">Contato</h3>
+                    {selectedOwner.phone && (
+                      <p className="text-sm text-muted-foreground flex items-center gap-2">
+                        <Phone className="h-4 w-4" /> {selectedOwner.phone}
+                      </p>
+                    )}
+                    {selectedOwner.email && (
+                      <p className="text-sm text-muted-foreground flex items-center gap-2">
+                        <Mail className="h-4 w-4" /> {selectedOwner.email}
+                      </p>
+                    )}
+                    {selectedOwner.whatsapp && (
+                      <p className="text-sm text-muted-foreground flex items-center gap-2">
+                        <MessageCircle className="h-4 w-4" /> {selectedOwner.whatsapp}
+                      </p>
+                    )}
+                    {selectedOwner.address && (
+                      <p className="text-sm text-muted-foreground flex items-center gap-2">
+                        <MapPin className="h-4 w-4" /> {selectedOwner.address}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-foreground">Pets ({selectedOwner.pets?.length || 0})</h3>
+                    {selectedOwner.pets && selectedOwner.pets.length > 0 ? (
+                      <div className="space-y-2">
+                        {selectedOwner.pets.map((pet) => (
+                          <div key={pet.id} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+                            <PawPrint className="h-4 w-4 text-primary" />
+                            <span className="text-sm font-medium">{pet.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Nenhum pet cadastrado</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    Cadastrado em: {new Date(selectedOwner.created_at).toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </MainLayout>
   );

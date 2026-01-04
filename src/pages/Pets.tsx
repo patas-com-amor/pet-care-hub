@@ -31,10 +31,15 @@ import {
   Camera,
   User,
   Loader2,
+  Calendar,
+  ImageIcon,
 } from 'lucide-react';
-import { usePets, useCreatePet, PetSpecies, PetSize } from '@/hooks/usePets';
+import { usePets, useCreatePet, PetSpecies, PetSize, PetWithOwner } from '@/hooks/usePets';
 import { useOwners } from '@/hooks/useOwners';
+import { useAppointments } from '@/hooks/useAppointments';
 import { Skeleton } from '@/components/ui/skeleton';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 const behaviorLabels: Record<string, { label: string; color: string }> = {
   bites: { label: 'Morde', color: 'destructive' },
@@ -62,6 +67,8 @@ const speciesLabels: Record<string, string> = {
 export default function Pets() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedPet, setSelectedPet] = useState<PetWithOwner | null>(null);
+  const [photosDialogPet, setPhotosDialogPet] = useState<PetWithOwner | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     species: 'dog' as PetSpecies,
@@ -74,6 +81,7 @@ export default function Pets() {
 
   const { data: pets = [], isLoading } = usePets();
   const { data: owners = [] } = useOwners();
+  const { data: appointments = [] } = useAppointments();
   const createPet = useCreatePet();
 
   const filteredPets = pets.filter(
@@ -99,6 +107,26 @@ export default function Pets() {
     
     setFormData({ name: '', species: 'dog', breed: '', size: 'medium', owner_id: '', allergies: '', notes: '' });
     setIsDialogOpen(false);
+  };
+
+  // Get pet history (appointments)
+  const getPetHistory = (petId: string) => {
+    return appointments
+      .filter(apt => apt.pet_id === petId)
+      .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
+  };
+
+  // Get pet photos from appointments
+  const getPetPhotos = (petId: string) => {
+    return appointments
+      .filter(apt => apt.pet_id === petId && (apt.before_photo_url || apt.after_photo_url))
+      .flatMap(apt => {
+        const photos = [];
+        if (apt.before_photo_url) photos.push({ url: apt.before_photo_url, type: 'Antes', date: apt.scheduled_at });
+        if (apt.after_photo_url) photos.push({ url: apt.after_photo_url, type: 'Depois', date: apt.scheduled_at });
+        return photos;
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
 
   return (
@@ -358,11 +386,21 @@ export default function Pets() {
                   )}
 
                   <div className="flex gap-2 mt-4">
-                    <Button variant="outline" size="sm" className="flex-1 gap-1">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1 gap-1"
+                      onClick={() => setPhotosDialogPet(pet)}
+                    >
                       <Camera className="h-3 w-3" />
                       Fotos
                     </Button>
-                    <Button variant="outline" size="sm" className="flex-1 gap-1">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1 gap-1"
+                      onClick={() => setSelectedPet(pet)}
+                    >
                       <Heart className="h-3 w-3" />
                       Histórico
                     </Button>
@@ -372,6 +410,99 @@ export default function Pets() {
             ))}
           </div>
         )}
+
+        {/* Pet History Dialog */}
+        <Dialog open={!!selectedPet} onOpenChange={(open) => !open && setSelectedPet(null)}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Heart className="h-5 w-5 text-primary" />
+                Histórico de {selectedPet?.name}
+              </DialogTitle>
+            </DialogHeader>
+            {selectedPet && (
+              <div className="space-y-4 py-4">
+                {getPetHistory(selectedPet.id).length === 0 ? (
+                  <div className="text-center py-8">
+                    <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground">Nenhum atendimento registrado</p>
+                  </div>
+                ) : (
+                  getPetHistory(selectedPet.id).map((apt) => (
+                    <Card key={apt.id} variant="bordered">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium text-foreground">{apt.services?.name || 'Serviço'}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {format(new Date(apt.scheduled_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+                            </p>
+                          </div>
+                          <Badge variant={apt.status === 'completed' ? 'success' : 'secondary'}>
+                            {apt.status === 'completed' ? 'Concluído' : apt.status}
+                          </Badge>
+                        </div>
+                        {apt.notes && (
+                          <p className="mt-2 text-sm text-muted-foreground italic">"{apt.notes}"</p>
+                        )}
+                        {apt.employees && (
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            Atendido por: {apt.employees.name}
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Pet Photos Dialog */}
+        <Dialog open={!!photosDialogPet} onOpenChange={(open) => !open && setPhotosDialogPet(null)}>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Camera className="h-5 w-5 text-primary" />
+                Fotos de {photosDialogPet?.name}
+              </DialogTitle>
+            </DialogHeader>
+            {photosDialogPet && (
+              <div className="py-4">
+                {getPetPhotos(photosDialogPet.id).length === 0 ? (
+                  <div className="text-center py-8">
+                    <ImageIcon className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground">Nenhuma foto registrada</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      As fotos são tiradas durante o check-in e check-out
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {getPetPhotos(photosDialogPet.id).map((photo, idx) => (
+                      <div key={idx} className="space-y-2">
+                        <div className="aspect-square rounded-lg overflow-hidden bg-muted">
+                          <img 
+                            src={photo.url} 
+                            alt={`${photo.type} - ${photosDialogPet.name}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="text-center">
+                          <Badge variant="outline" className="text-xs">{photo.type}</Badge>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {format(new Date(photo.date), 'dd/MM/yyyy', { locale: ptBR })}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </MainLayout>
   );
