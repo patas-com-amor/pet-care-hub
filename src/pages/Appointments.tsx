@@ -4,6 +4,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -11,10 +13,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useSettings } from '@/contexts/SettingsContext';
 import { departments } from '@/data/departments';
-import { useAppointments, AppointmentStatus, DepartmentId } from '@/hooks/useAppointments';
+import { useAppointments, useCreateAppointment, AppointmentStatus, DepartmentId } from '@/hooks/useAppointments';
+import { useOwners } from '@/hooks/useOwners';
+import { usePets } from '@/hooks/usePets';
+import { useServices } from '@/hooks/useServices';
+import { useEmployees } from '@/hooks/useEmployees';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -26,6 +40,7 @@ import {
   Clock,
   User,
   MoreVertical,
+  Loader2,
 } from 'lucide-react';
 
 const statusLabels: Record<AppointmentStatus, string> = {
@@ -59,12 +74,65 @@ export default function Appointments() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDepartment, setFilterDepartment] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    owner_id: '',
+    pet_id: '',
+    department_id: '' as DepartmentId | '',
+    service_id: '',
+    employee_id: '',
+    scheduled_at: '',
+    scheduled_time: '',
+    notes: '',
+  });
 
   const { data: appointments = [], isLoading } = useAppointments();
+  const { data: owners = [] } = useOwners();
+  const { data: pets = [] } = usePets();
+  const { data: services = [] } = useServices();
+  const { data: employees = [] } = useEmployees();
+  const createAppointment = useCreateAppointment();
 
   const enabledDepartments = departments.filter((dept) =>
     isDepartmentEnabled(dept.id)
   );
+
+  // Filter pets by selected owner
+  const filteredPets = formData.owner_id
+    ? pets.filter(p => p.owner_id === formData.owner_id)
+    : [];
+
+  // Filter services by selected department
+  const filteredServices = formData.department_id
+    ? services.filter(s => s.department_id === formData.department_id && s.active)
+    : [];
+
+  // Filter employees by selected department
+  const filteredEmployees = formData.department_id
+    ? employees.filter(e => e.active && e.departments?.includes(formData.department_id as DepartmentId))
+    : [];
+
+  const selectedService = services.find(s => s.id === formData.service_id);
+
+  const handleSubmit = async () => {
+    if (!formData.owner_id || !formData.pet_id || !formData.department_id || !formData.service_id || !formData.scheduled_at || !formData.scheduled_time) return;
+    
+    const scheduledAt = new Date(`${formData.scheduled_at}T${formData.scheduled_time}`);
+    
+    await createAppointment.mutateAsync({
+      owner_id: formData.owner_id,
+      pet_id: formData.pet_id,
+      department_id: formData.department_id as DepartmentId,
+      service_id: formData.service_id,
+      employee_id: formData.employee_id || null,
+      scheduled_at: scheduledAt.toISOString(),
+      price: selectedService?.price || 0,
+      notes: formData.notes || null,
+    });
+    
+    setFormData({ owner_id: '', pet_id: '', department_id: '', service_id: '', employee_id: '', scheduled_at: '', scheduled_time: '', notes: '' });
+    setIsDialogOpen(false);
+  };
 
   const filteredAppointments = appointments.filter((apt) => {
     const matchesSearch =
@@ -93,10 +161,147 @@ export default function Appointments() {
               Gerencie todos os agendamentos do pet shop
             </p>
           </div>
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            Novo Agendamento
-          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Novo Agendamento
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Novo Agendamento</DialogTitle>
+                <DialogDescription>
+                  Preencha os dados para criar um novo agendamento
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Tutor *</Label>
+                    <Select value={formData.owner_id} onValueChange={(v) => setFormData({ ...formData, owner_id: v, pet_id: '' })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o tutor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {owners.map((owner) => (
+                          <SelectItem key={owner.id} value={owner.id}>
+                            {owner.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Pet *</Label>
+                    <Select value={formData.pet_id} onValueChange={(v) => setFormData({ ...formData, pet_id: v })} disabled={!formData.owner_id}>
+                      <SelectTrigger>
+                        <SelectValue placeholder={formData.owner_id ? "Selecione o pet" : "Selecione um tutor primeiro"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filteredPets.map((pet) => (
+                          <SelectItem key={pet.id} value={pet.id}>
+                            {pet.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Departamento *</Label>
+                    <Select value={formData.department_id} onValueChange={(v) => setFormData({ ...formData, department_id: v as DepartmentId, service_id: '', employee_id: '' })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o departamento" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {enabledDepartments.map((dept) => (
+                          <SelectItem key={dept.id} value={dept.id}>
+                            {dept.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Serviço *</Label>
+                    <Select value={formData.service_id} onValueChange={(v) => setFormData({ ...formData, service_id: v })} disabled={!formData.department_id}>
+                      <SelectTrigger>
+                        <SelectValue placeholder={formData.department_id ? "Selecione o serviço" : "Selecione um departamento primeiro"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filteredServices.map((service) => (
+                          <SelectItem key={service.id} value={service.id}>
+                            {service.name} - R$ {Number(service.price).toFixed(2)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Data *</Label>
+                    <Input
+                      type="date"
+                      value={formData.scheduled_at}
+                      onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Horário *</Label>
+                    <Input
+                      type="time"
+                      value={formData.scheduled_time}
+                      onChange={(e) => setFormData({ ...formData, scheduled_time: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Colaborador</Label>
+                    <Select value={formData.employee_id} onValueChange={(v) => setFormData({ ...formData, employee_id: v })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Opcional" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filteredEmployees.map((emp) => (
+                          <SelectItem key={emp.id} value={emp.id}>
+                            {emp.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Observações</Label>
+                  <Textarea
+                    placeholder="Informações adicionais..."
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  />
+                </div>
+                {selectedService && (
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">Valor do serviço:</p>
+                    <p className="text-lg font-bold text-foreground">R$ {Number(selectedService.price).toFixed(2)}</p>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!formData.owner_id || !formData.pet_id || !formData.department_id || !formData.service_id || !formData.scheduled_at || !formData.scheduled_time || createAppointment.isPending}
+                >
+                  {createAppointment.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Agendar
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Filters */}
