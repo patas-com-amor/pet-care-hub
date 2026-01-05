@@ -13,6 +13,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -33,8 +43,10 @@ import {
   Loader2,
   Calendar,
   ImageIcon,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
-import { usePets, useCreatePet, PetSpecies, PetSize, PetWithOwner } from '@/hooks/usePets';
+import { usePets, useCreatePet, useUpdatePet, useDeletePet, PetSpecies, PetSize, PetWithOwner } from '@/hooks/usePets';
 import { useOwners } from '@/hooks/useOwners';
 import { useAppointments } from '@/hooks/useAppointments';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -69,6 +81,8 @@ export default function Pets() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedPet, setSelectedPet] = useState<PetWithOwner | null>(null);
   const [photosDialogPet, setPhotosDialogPet] = useState<PetWithOwner | null>(null);
+  const [editingPet, setEditingPet] = useState<PetWithOwner | null>(null);
+  const [deletingPet, setDeletingPet] = useState<PetWithOwner | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     species: 'dog' as PetSpecies,
@@ -83,6 +97,8 @@ export default function Pets() {
   const { data: owners = [] } = useOwners();
   const { data: appointments = [] } = useAppointments();
   const createPet = useCreatePet();
+  const updatePet = useUpdatePet();
+  const deletePet = useDeletePet();
 
   const filteredPets = pets.filter(
     (pet) =>
@@ -107,6 +123,42 @@ export default function Pets() {
     
     setFormData({ name: '', species: 'dog', breed: '', size: 'medium', owner_id: '', allergies: '', notes: '' });
     setIsDialogOpen(false);
+  };
+
+  const handleEdit = (pet: PetWithOwner) => {
+    setEditingPet(pet);
+    setFormData({
+      name: pet.name,
+      species: pet.species,
+      breed: pet.breed || '',
+      size: pet.size,
+      owner_id: pet.owner_id,
+      allergies: pet.allergies?.join(', ') || '',
+      notes: pet.notes || '',
+    });
+  };
+
+  const handleUpdate = async () => {
+    if (!editingPet || !formData.name.trim()) return;
+    
+    await updatePet.mutateAsync({
+      id: editingPet.id,
+      name: formData.name,
+      species: formData.species,
+      breed: formData.breed || null,
+      size: formData.size,
+      allergies: formData.allergies ? formData.allergies.split(',').map(a => a.trim()) : [],
+      notes: formData.notes || null,
+    });
+    
+    setEditingPet(null);
+    setFormData({ name: '', species: 'dog', breed: '', size: 'medium', owner_id: '', allergies: '', notes: '' });
+  };
+
+  const handleDelete = async () => {
+    if (!deletingPet) return;
+    await deletePet.mutateAsync(deletingPet.id);
+    setDeletingPet(null);
   };
 
   // Get pet history (appointments)
@@ -405,6 +457,26 @@ export default function Pets() {
                       Histórico
                     </Button>
                   </div>
+                  <div className="flex gap-2 mt-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="flex-1 gap-1"
+                      onClick={() => handleEdit(pet)}
+                    >
+                      <Pencil className="h-3 w-3" />
+                      Editar
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="flex-1 gap-1 text-destructive hover:text-destructive"
+                      onClick={() => setDeletingPet(pet)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      Excluir
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -503,6 +575,128 @@ export default function Pets() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Edit Pet Dialog */}
+        <Dialog open={!!editingPet} onOpenChange={(open) => {
+          if (!open) {
+            setEditingPet(null);
+            setFormData({ name: '', species: 'dog', breed: '', size: 'medium', owner_id: '', allergies: '', notes: '' });
+          }
+        }}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Editar Pet</DialogTitle>
+              <DialogDescription>
+                Atualize as informações do pet
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editPetName">Nome do Pet *</Label>
+                  <Input 
+                    id="editPetName" 
+                    placeholder="Nome"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Espécie</Label>
+                  <Select value={formData.species} onValueChange={(v: PetSpecies) => setFormData({ ...formData, species: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dog">Cachorro</SelectItem>
+                      <SelectItem value="cat">Gato</SelectItem>
+                      <SelectItem value="bird">Pássaro</SelectItem>
+                      <SelectItem value="other">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editBreed">Raça</Label>
+                  <Input 
+                    id="editBreed" 
+                    placeholder="Raça do pet"
+                    value={formData.breed}
+                    onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Porte</Label>
+                  <Select value={formData.size} onValueChange={(v: PetSize) => setFormData({ ...formData, size: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="small">Pequeno</SelectItem>
+                      <SelectItem value="medium">Médio</SelectItem>
+                      <SelectItem value="large">Grande</SelectItem>
+                      <SelectItem value="giant">Gigante</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editAllergies">Alergias</Label>
+                <Input 
+                  id="editAllergies" 
+                  placeholder="Separe por vírgula"
+                  value={formData.allergies}
+                  onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editNotes">Observações</Label>
+                <Textarea 
+                  id="editNotes" 
+                  placeholder="Informações adicionais sobre o pet"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditingPet(null)}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleUpdate}
+                disabled={!formData.name.trim() || updatePet.isPending}
+              >
+                {updatePet.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Salvar
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={!!deletingPet} onOpenChange={(open) => !open && setDeletingPet(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir Pet</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir o pet "{deletingPet?.name}"? 
+                Esta ação não pode ser desfeita e todo o histórico será perdido.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deletePet.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </MainLayout>
   );

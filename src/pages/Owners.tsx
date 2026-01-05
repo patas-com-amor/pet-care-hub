@@ -13,6 +13,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import {
   Users,
@@ -26,14 +36,18 @@ import {
   Loader2,
   CreditCard,
   Calendar,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
-import { useOwners, useCreateOwner, OwnerWithPets } from '@/hooks/useOwners';
+import { useOwners, useCreateOwner, useUpdateOwner, useDeleteOwner, OwnerWithPets } from '@/hooks/useOwners';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Owners() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedOwner, setSelectedOwner] = useState<OwnerWithPets | null>(null);
+  const [editingOwner, setEditingOwner] = useState<OwnerWithPets | null>(null);
+  const [deletingOwner, setDeletingOwner] = useState<OwnerWithPets | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -45,6 +59,8 @@ export default function Owners() {
 
   const { data: owners = [], isLoading } = useOwners();
   const createOwner = useCreateOwner();
+  const updateOwner = useUpdateOwner();
+  const deleteOwner = useDeleteOwner();
 
   const filteredOwners = owners.filter(
     (owner) =>
@@ -67,6 +83,41 @@ export default function Owners() {
     
     setFormData({ name: '', email: '', phone: '', whatsapp: '', address: '', cpf: '' });
     setIsDialogOpen(false);
+  };
+
+  const handleEdit = (owner: OwnerWithPets) => {
+    setEditingOwner(owner);
+    setFormData({
+      name: owner.name,
+      email: owner.email || '',
+      phone: owner.phone || '',
+      whatsapp: owner.whatsapp || '',
+      address: owner.address || '',
+      cpf: owner.cpf || '',
+    });
+  };
+
+  const handleUpdate = async () => {
+    if (!editingOwner || !formData.name.trim()) return;
+    
+    await updateOwner.mutateAsync({
+      id: editingOwner.id,
+      name: formData.name,
+      email: formData.email || null,
+      phone: formData.phone || null,
+      whatsapp: formData.whatsapp || null,
+      address: formData.address || null,
+      cpf: formData.cpf || null,
+    });
+    
+    setEditingOwner(null);
+    setFormData({ name: '', email: '', phone: '', whatsapp: '', address: '', cpf: '' });
+  };
+
+  const handleDelete = async () => {
+    if (!deletingOwner) return;
+    await deleteOwner.mutateAsync(deletingOwner.id);
+    setDeletingOwner(null);
   };
 
   const handleWhatsApp = (whatsapp: string | null) => {
@@ -312,6 +363,26 @@ export default function Owners() {
                       Ver Detalhes
                     </Button>
                   </div>
+                  <div className="flex gap-2 mt-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="flex-1 gap-1"
+                      onClick={() => handleEdit(owner)}
+                    >
+                      <Pencil className="h-3 w-3" />
+                      Editar
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="flex-1 gap-1 text-destructive hover:text-destructive"
+                      onClick={() => setDeletingOwner(owner)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      Excluir
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -397,6 +468,124 @@ export default function Owners() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Edit Owner Dialog */}
+        <Dialog open={!!editingOwner} onOpenChange={(open) => {
+          if (!open) {
+            setEditingOwner(null);
+            setFormData({ name: '', email: '', phone: '', whatsapp: '', address: '', cpf: '' });
+          }
+        }}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Editar Tutor</DialogTitle>
+              <DialogDescription>
+                Atualize as informações do tutor
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editOwnerName">Nome Completo *</Label>
+                  <Input 
+                    id="editOwnerName" 
+                    placeholder="Nome do tutor"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editCpf">CPF</Label>
+                  <Input 
+                    id="editCpf" 
+                    placeholder="000.000.000-00"
+                    value={formData.cpf}
+                    onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editEmail">E-mail</Label>
+                  <Input 
+                    id="editEmail" 
+                    type="email" 
+                    placeholder="email@exemplo.com"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editPhone">Telefone</Label>
+                  <Input 
+                    id="editPhone" 
+                    placeholder="(00) 00000-0000"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editWhatsapp">WhatsApp</Label>
+                <Input 
+                  id="editWhatsapp" 
+                  placeholder="5500000000000"
+                  value={formData.whatsapp}
+                  onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editAddress">Endereço</Label>
+                <Input 
+                  id="editAddress" 
+                  placeholder="Rua, número, bairro"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditingOwner(null)}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleUpdate} 
+                disabled={!formData.name.trim() || updateOwner.isPending}
+              >
+                {updateOwner.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Salvar
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={!!deletingOwner} onOpenChange={(open) => !open && setDeletingOwner(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir Tutor</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir o tutor "{deletingOwner?.name}"? 
+                Esta ação não pode ser desfeita.
+                {deletingOwner?.pets && deletingOwner.pets.length > 0 && (
+                  <span className="block mt-2 text-destructive font-medium">
+                    Atenção: Este tutor possui {deletingOwner.pets.length} pet(s) cadastrado(s).
+                  </span>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleteOwner.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </MainLayout>
   );
