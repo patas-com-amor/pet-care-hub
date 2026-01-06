@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { OwnerSearchSelect } from '@/components/OwnerSearchSelect';
 import {
   Select,
   SelectContent,
@@ -250,18 +251,12 @@ export default function Appointments() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Tutor *</Label>
-                    <Select value={formData.owner_id} onValueChange={(v) => setFormData({ ...formData, owner_id: v, pet_id: '' })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o tutor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {owners.map((owner) => (
-                          <SelectItem key={owner.id} value={owner.id}>
-                            {owner.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <OwnerSearchSelect
+                      owners={owners}
+                      value={formData.owner_id}
+                      onValueChange={(v) => setFormData({ ...formData, owner_id: v, pet_id: '' })}
+                      placeholder="Buscar tutor..."
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Pet *</Label>
