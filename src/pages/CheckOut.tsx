@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function CheckOut() {
   const { settings } = useSettings();
@@ -50,14 +51,41 @@ export default function CheckOut() {
       apt.owners?.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setPhotoFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setAfterPhoto(reader.result as string);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadPhotoToStorage = async (petId: string): Promise<string | null> => {
+    if (!photoFile) return afterPhoto;
+    
+    try {
+      const fileExt = photoFile.name.split('.').pop();
+      const fileName = `${petId}/${Date.now()}_checkout.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('fotos_pets')
+        .upload(fileName, photoFile);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('fotos_pets')
+        .getPublicUrl(fileName);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      return null;
     }
   };
 
@@ -67,10 +95,13 @@ export default function CheckOut() {
     setIsProcessing(true);
 
     try {
+      // Upload photo to storage
+      const photoUrl = await uploadPhotoToStorage(selectedAppointment.pet_id);
+
       // Update appointment in database
       await checkOutMutation.mutateAsync({
         id: selectedAppointment.id,
-        afterPhotoUrl: afterPhoto || undefined,
+        afterPhotoUrl: photoUrl || undefined,
         notes: notes || undefined,
       });
 
@@ -88,7 +119,7 @@ export default function CheckOut() {
               ownerName: selectedAppointment.owners?.name,
               ownerWhatsapp: selectedAppointment.owners?.whatsapp,
               service: selectedAppointment.services?.name,
-              afterPhoto: afterPhoto,
+              afterPhoto: photoUrl,
               notes: notes,
               checkoutAt: new Date().toISOString(),
             }),
@@ -112,6 +143,7 @@ export default function CheckOut() {
     setIsProcessing(false);
     setSelectedAppointment(null);
     setAfterPhoto(null);
+    setPhotoFile(null);
     setNotes('');
   };
 

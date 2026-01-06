@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,6 +45,7 @@ import {
   ImageIcon,
   Pencil,
   Trash2,
+  Upload,
 } from 'lucide-react';
 import { usePets, useCreatePet, useUpdatePet, useDeletePet, PetSpecies, PetSize, PetWithOwner } from '@/hooks/usePets';
 import { useOwners } from '@/hooks/useOwners';
@@ -52,6 +53,8 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const behaviorLabels: Record<string, { label: string; color: string }> = {
   bites: { label: 'Morde', color: 'destructive' },
@@ -92,6 +95,9 @@ export default function Pets() {
     allergies: '',
     notes: '',
   });
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [petPhotos, setPetPhotos] = useState<{ url: string; type: string; date: string }[]>([]);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const { data: pets = [], isLoading } = usePets();
   const { data: owners = [] } = useOwners();
@@ -179,6 +185,80 @@ export default function Pets() {
         return photos;
       })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  };
+
+  // Upload photo to Supabase storage
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !photosDialogPet) return;
+
+    setIsUploadingPhoto(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${photosDialogPet.id}/${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('fotos_pets')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('fotos_pets')
+        .getPublicUrl(fileName);
+
+      // Add to local state to show immediately
+      setPetPhotos(prev => [{
+        url: publicUrl,
+        type: 'Galeria',
+        date: new Date().toISOString()
+      }, ...prev]);
+
+      toast.success('Foto enviada com sucesso!');
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error('Erro ao enviar foto: ' + error.message);
+    } finally {
+      setIsUploadingPhoto(false);
+      if (photoInputRef.current) {
+        photoInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Load photos when dialog opens
+  const handleOpenPhotosDialog = async (pet: PetWithOwner) => {
+    setPhotosDialogPet(pet);
+    
+    // Get photos from appointments
+    const appointmentPhotos = getPetPhotos(pet.id);
+    
+    // Get photos from storage bucket
+    try {
+      const { data: files, error } = await supabase.storage
+        .from('fotos_pets')
+        .list(pet.id, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
+
+      if (error) throw error;
+
+      const storagePhotos = (files || [])
+        .filter(file => file.name !== '.emptyFolderPlaceholder')
+        .map(file => {
+          const { data: { publicUrl } } = supabase.storage
+            .from('fotos_pets')
+            .getPublicUrl(`${pet.id}/${file.name}`);
+          return {
+            url: publicUrl,
+            type: 'Galeria',
+            date: file.created_at || new Date().toISOString()
+          };
+        });
+
+      setPetPhotos([...storagePhotos, ...appointmentPhotos]);
+    } catch (error) {
+      console.error('Error loading photos:', error);
+      setPetPhotos(appointmentPhotos);
+    }
   };
 
   return (
@@ -442,7 +522,7 @@ export default function Pets() {
                       variant="outline" 
                       size="sm" 
                       className="flex-1 gap-1"
-                      onClick={() => setPhotosDialogPet(pet)}
+                      onClick={() => handleOpenPhotosDialog(pet)}
                     >
                       <Camera className="h-3 w-3" />
                       Fotos
@@ -532,7 +612,12 @@ export default function Pets() {
         </Dialog>
 
         {/* Pet Photos Dialog */}
-        <Dialog open={!!photosDialogPet} onOpenChange={(open) => !open && setPhotosDialogPet(null)}>
+        <Dialog open={!!photosDialogPet} onOpenChange={(open) => {
+          if (!open) {
+            setPhotosDialogPet(null);
+            setPetPhotos([]);
+          }
+        }}>
           <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -541,18 +626,46 @@ export default function Pets() {
               </DialogTitle>
             </DialogHeader>
             {photosDialogPet && (
-              <div className="py-4">
-                {getPetPhotos(photosDialogPet.id).length === 0 ? (
+              <div className="py-4 space-y-4">
+                {/* Upload Button */}
+                <div className="flex justify-center">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    ref={photoInputRef}
+                    className="hidden"
+                  />
+                  <Button 
+                    onClick={() => photoInputRef.current?.click()}
+                    disabled={isUploadingPhoto}
+                    className="gap-2"
+                  >
+                    {isUploadingPhoto ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Enviando...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4" />
+                        Enviar Nova Foto
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {petPhotos.length === 0 ? (
                   <div className="text-center py-8">
                     <ImageIcon className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                     <p className="text-muted-foreground">Nenhuma foto registrada</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      As fotos são tiradas durante o check-in e check-out
+                      Clique no botão acima para adicionar fotos
                     </p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {getPetPhotos(photosDialogPet.id).map((photo, idx) => (
+                    {petPhotos.map((photo, idx) => (
                       <div key={idx} className="space-y-2">
                         <div className="aspect-square rounded-lg overflow-hidden bg-muted">
                           <img 
