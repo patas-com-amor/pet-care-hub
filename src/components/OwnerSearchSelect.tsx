@@ -47,29 +47,32 @@ export function OwnerSearchSelect({
   const filteredOwners = useMemo(() => {
     if (!searchQuery) return owners;
     
-    const query = searchQuery.toLowerCase().replace(/\D/g, '');
-    const queryText = searchQuery.toLowerCase();
+    const queryText = searchQuery.toLowerCase().trim();
+    const queryNumbers = searchQuery.replace(/\D/g, '');
     
     return owners.filter((owner) => {
       // Match by name
       if (owner.name.toLowerCase().includes(queryText)) return true;
       
-      // Match by WhatsApp (numbers only)
-      if (owner.whatsapp) {
-        const whatsappNumbers = owner.whatsapp.replace(/\D/g, '');
-        if (whatsappNumbers.includes(query)) return true;
-      }
-      
-      // Match by phone (numbers only)
-      if (owner.phone) {
-        const phoneNumbers = owner.phone.replace(/\D/g, '');
-        if (phoneNumbers.includes(query)) return true;
-      }
-      
-      // Match by CPF (numbers only)
-      if (owner.cpf) {
-        const cpfNumbers = owner.cpf.replace(/\D/g, '');
-        if (cpfNumbers.includes(query)) return true;
+      // Only check numeric fields if there are digits in the search
+      if (queryNumbers.length > 0) {
+        // Match by WhatsApp (numbers only)
+        if (owner.whatsapp) {
+          const whatsappNumbers = owner.whatsapp.replace(/\D/g, '');
+          if (whatsappNumbers.includes(queryNumbers)) return true;
+        }
+        
+        // Match by phone (numbers only)
+        if (owner.phone) {
+          const phoneNumbers = owner.phone.replace(/\D/g, '');
+          if (phoneNumbers.includes(queryNumbers)) return true;
+        }
+        
+        // Match by CPF (numbers only)
+        if (owner.cpf) {
+          const cpfNumbers = owner.cpf.replace(/\D/g, '');
+          if (cpfNumbers.includes(queryNumbers)) return true;
+        }
       }
       
       return false;
