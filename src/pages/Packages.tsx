@@ -112,6 +112,8 @@ export default function Packages() {
     const selectedPackage = servicePackages?.find(p => p.id === sellForm.package_id);
     if (!selectedPackage) return;
 
+    const selectedOwner = owners?.find(o => o.id === sellForm.owner_id);
+
     try {
       await sellPackageMutation.mutateAsync({
         package_id: sellForm.package_id,
@@ -119,6 +121,9 @@ export default function Packages() {
         pet_id: sellForm.pet_id,
         remaining_uses: selectedPackage.quantity,
         expires_at: new Date(Date.now() + selectedPackage.validity_days * 24 * 60 * 60 * 1000).toISOString(),
+        packageName: selectedPackage.name,
+        discountedPrice: selectedPackage.discounted_price,
+        ownerName: selectedOwner?.name,
       });
       toast.success('Pacote vendido com sucesso!');
       setIsSellOpen(false);

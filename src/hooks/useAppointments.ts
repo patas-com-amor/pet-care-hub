@@ -251,7 +251,28 @@ export function useCheckOut() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, afterPhotoUrl, notes }: { id: string; afterPhotoUrl?: string; notes?: string }) => {
+    mutationFn: async ({ 
+      id, 
+      afterPhotoUrl, 
+      notes,
+      price,
+      serviceName,
+      employeeId,
+      employeeName,
+      commissionPercentage,
+      isPackageAppointment
+    }: { 
+      id: string; 
+      afterPhotoUrl?: string; 
+      notes?: string;
+      price: number;
+      serviceName: string;
+      employeeId?: string | null;
+      employeeName?: string | null;
+      commissionPercentage?: number;
+      isPackageAppointment?: boolean;
+    }) => {
+      // Update appointment status
       const { data, error } = await supabase
         .from('appointments')
         .update({
@@ -265,10 +286,51 @@ export function useCheckOut() {
         .single();
 
       if (error) throw error;
+
+      // Create income transaction for service (only if not using package credit)
+      if (!isPackageAppointment && price > 0) {
+        const { error: transactionError } = await supabase
+          .from('transactions')
+          .insert({
+            type: 'income',
+            category: 'service',
+            description: `Serviço: ${serviceName}`,
+            amount: price,
+            appointment_id: id,
+            employee_id: employeeId || null,
+            date: new Date().toISOString().split('T')[0],
+          });
+
+        if (transactionError) {
+          console.error('Error creating service transaction:', transactionError);
+        }
+      }
+
+      // Create commission expense transaction if employee has commission
+      if (employeeId && commissionPercentage && commissionPercentage > 0 && price > 0) {
+        const commissionAmount = (price * commissionPercentage) / 100;
+        const { error: commissionError } = await supabase
+          .from('transactions')
+          .insert({
+            type: 'expense',
+            category: 'commission',
+            description: `Comissão: ${employeeName || 'Funcionário'} - ${serviceName}`,
+            amount: commissionAmount,
+            appointment_id: id,
+            employee_id: employeeId,
+            date: new Date().toISOString().split('T')[0],
+          });
+
+        if (commissionError) {
+          console.error('Error creating commission transaction:', commissionError);
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
       toast.success('Check-out realizado com sucesso!');
     },
     onError: (error) => {

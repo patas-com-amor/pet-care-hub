@@ -98,11 +98,32 @@ export default function CheckOut() {
       // Upload photo to storage
       const photoUrl = await uploadPhotoToStorage(selectedAppointment.pet_id);
 
-      // Update appointment in database
+      // Get employee commission info if assigned
+      let commissionPercentage: number | undefined;
+      if (selectedAppointment.employee_id && selectedAppointment.employees) {
+        // Fetch employee commission data
+        const { data: empData } = await supabase
+          .from('employees')
+          .select('commission_enabled, commission_percentage')
+          .eq('id', selectedAppointment.employee_id)
+          .single();
+        
+        if (empData?.commission_enabled) {
+          commissionPercentage = Number(empData.commission_percentage);
+        }
+      }
+
+      // Update appointment in database and create transactions
       await checkOutMutation.mutateAsync({
         id: selectedAppointment.id,
         afterPhotoUrl: photoUrl || undefined,
         notes: notes || undefined,
+        price: Number(selectedAppointment.price),
+        serviceName: selectedAppointment.services?.name || 'Serviço',
+        employeeId: selectedAppointment.employee_id,
+        employeeName: selectedAppointment.employees?.name,
+        commissionPercentage,
+        isPackageAppointment: !!selectedAppointment.package_id,
       });
 
       // Send notification via n8n webhook if configured
