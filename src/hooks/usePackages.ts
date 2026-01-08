@@ -185,18 +185,45 @@ export function useSellPackage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (customerPackage: CustomerPackageInsert) => {
+    mutationFn: async (customerPackage: CustomerPackageInsert & { 
+      packageName: string; 
+      discountedPrice: number;
+      ownerName?: string;
+    }) => {
+      const { packageName, discountedPrice, ownerName, ...insertData } = customerPackage;
+      
       const { data, error } = await supabase
         .from('customer_packages')
-        .insert(customerPackage)
+        .insert(insertData)
         .select()
         .single();
 
       if (error) throw error;
+
+      // Create income transaction for package sale
+      if (discountedPrice > 0) {
+        const { error: transactionError } = await supabase
+          .from('transactions')
+          .insert({
+            type: 'income',
+            category: 'package',
+            description: `Venda pacote: ${packageName}${ownerName ? ` - ${ownerName}` : ''}`,
+            amount: discountedPrice,
+            appointment_id: null,
+            employee_id: null,
+            date: new Date().toISOString().split('T')[0],
+          });
+
+        if (transactionError) {
+          console.error('Error creating package transaction:', transactionError);
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customer-packages'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
       toast.success('Pacote vendido com sucesso!');
     },
     onError: (error) => {
