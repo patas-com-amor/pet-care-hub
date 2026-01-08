@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { OwnerSearchSelect } from '@/components/OwnerSearchSelect';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
+import { addDays, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import {
   Select,
   SelectContent,
@@ -96,6 +100,8 @@ export default function Appointments() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDepartment, setFilterDepartment] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState<Date>(startOfDay(new Date()));
+  const [dateTo, setDateTo] = useState<Date>(endOfDay(addDays(new Date(), 1)));
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<AppointmentWithDetails | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -206,18 +212,24 @@ export default function Appointments() {
     setDeleteConfirmId(null);
   };
 
-  const filteredAppointments = appointments.filter((apt) => {
-    const matchesSearch =
-      apt.pets?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      apt.owners?.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDepartment =
-      filterDepartment === 'all' || apt.department_id === filterDepartment;
-    const matchesStatus =
-      filterStatus === 'all' || apt.status === filterStatus;
-    const deptEnabled = isDepartmentEnabled(apt.department_id);
+  const filteredAppointments = useMemo(() => {
+    return appointments.filter((apt) => {
+      const matchesSearch =
+        apt.pets?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        apt.owners?.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesDepartment =
+        filterDepartment === 'all' || apt.department_id === filterDepartment;
+      const matchesStatus =
+        filterStatus === 'all' || apt.status === filterStatus;
+      const deptEnabled = isDepartmentEnabled(apt.department_id);
+      
+      // Date filter
+      const appointmentDate = new Date(apt.scheduled_at);
+      const matchesDate = isWithinInterval(appointmentDate, { start: dateFrom, end: dateTo });
 
-    return matchesSearch && matchesDepartment && matchesStatus && deptEnabled;
-  });
+      return matchesSearch && matchesDepartment && matchesStatus && deptEnabled && matchesDate;
+    });
+  }, [appointments, searchTerm, filterDepartment, filterStatus, dateFrom, dateTo, isDepartmentEnabled]);
 
   return (
     <MainLayout>
@@ -373,42 +385,109 @@ export default function Appointments() {
         {/* Filters */}
         <Card variant="elevated">
           <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por pet ou tutor..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por pet ou tutor..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Select value={filterDepartment} onValueChange={setFilterDepartment}>
+                  <SelectTrigger className="w-full md:w-48">
+                    <SelectValue placeholder="Departamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os departamentos</SelectItem>
+                    {enabledDepartments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger className="w-full md:w-48">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os status</SelectItem>
+                    {Object.entries(statusLabels).map(([key, label]) => (
+                      <SelectItem key={key} value={key}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <Select value={filterDepartment} onValueChange={setFilterDepartment}>
-                <SelectTrigger className="w-full md:w-48">
-                  <SelectValue placeholder="Departamento" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os departamentos</SelectItem>
-                  {enabledDepartments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.id}>
-                      {dept.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-full md:w-48">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os status</SelectItem>
-                  {Object.entries(statusLabels).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm whitespace-nowrap">De:</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-[160px] justify-start text-left font-normal",
+                          !dateFrom && "text-muted-foreground"
+                        )}
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Selecione"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={dateFrom}
+                        onSelect={(date) => date && setDateFrom(startOfDay(date))}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm whitespace-nowrap">Até:</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-[160px] justify-start text-left font-normal",
+                          !dateTo && "text-muted-foreground"
+                        )}
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {dateTo ? format(dateTo, "dd/MM/yyyy") : "Selecione"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={dateTo}
+                        onSelect={(date) => date && setDateTo(endOfDay(date))}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setDateFrom(startOfDay(new Date()));
+                    setDateTo(endOfDay(addDays(new Date(), 1)));
+                  }}
+                  className="text-muted-foreground"
+                >
+                  Hoje e amanhã
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
