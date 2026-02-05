@@ -104,9 +104,15 @@ export default function Pets() {
   const { data: pets = [], isLoading } = usePets();
   const { data: owners = [] } = useOwners();
   const { data: appointments = [] } = useAppointments();
+  const { data: customerPackages = [] } = useCustomerPackages();
   const createPet = useCreatePet();
   const updatePet = useUpdatePet();
   const deletePet = useDeletePet();
+
+  // Get pet packages
+  const getPetPackages = (petId: string) => {
+    return customerPackages.filter(pkg => pkg.pet_id === petId);
+  };
 
   const filteredPets = pets.filter(
     (pet) =>
