@@ -181,6 +181,75 @@ export function useUpdateServicePackage() {
   });
 }
 
+export function useDeleteServicePackage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('service_packages')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-packages'] });
+      toast.success('Pacote excluído com sucesso!');
+    },
+    onError: (error) => {
+      toast.error('Erro ao excluir pacote: ' + error.message);
+    },
+  });
+}
+
+export function useUpdateCustomerPackage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...data }: { id: string; remaining_uses?: number; expires_at?: string }) => {
+      const { data: result, error } = await supabase
+        .from('customer_packages')
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customer-packages'] });
+      toast.success('Pacote atualizado com sucesso!');
+    },
+    onError: (error) => {
+      toast.error('Erro ao atualizar pacote: ' + error.message);
+    },
+  });
+}
+
+export function useDeleteCustomerPackage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('customer_packages')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customer-packages'] });
+      toast.success('Pacote do cliente excluído com sucesso!');
+    },
+    onError: (error) => {
+      toast.error('Erro ao excluir pacote: ' + error.message);
+    },
+  });
+}
+
 export function useSellPackage() {
   const queryClient = useQueryClient();
 
