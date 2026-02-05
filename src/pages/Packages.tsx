@@ -15,6 +15,16 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -29,7 +39,14 @@ import {
   useServicePackages,
   useCustomerPackages,
   useCreateServicePackage,
+  useUpdateServicePackage,
+  useDeleteServicePackage,
   useSellPackage,
+  useUsePackageCredit,
+  useUpdateCustomerPackage,
+  useDeleteCustomerPackage,
+  ServicePackageWithService,
+  CustomerPackageWithDetails,
 } from '@/hooks/usePackages';
 import {
   Package,
@@ -39,11 +56,19 @@ import {
   Percent,
   ShoppingCart,
   Loader2,
+  Pencil,
+  Trash2,
+  Check,
 } from 'lucide-react';
 
 export default function Packages() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSellOpen, setIsSellOpen] = useState(false);
+  const [editingPackage, setEditingPackage] = useState<ServicePackageWithService | null>(null);
+  const [deletingPackage, setDeletingPackage] = useState<ServicePackageWithService | null>(null);
+  const [editingCustomerPackage, setEditingCustomerPackage] = useState<CustomerPackageWithDetails | null>(null);
+  const [deletingCustomerPackage, setDeletingCustomerPackage] = useState<CustomerPackageWithDetails | null>(null);
+  const [usingCreditPackage, setUsingCreditPackage] = useState<CustomerPackageWithDetails | null>(null);
   
   // Form states for create
   const [newPackage, setNewPackage] = useState({
@@ -55,6 +80,23 @@ export default function Packages() {
     original_price: 0,
     discounted_price: 0,
     active: true,
+  });
+
+  // Form states for edit package
+  const [editForm, setEditForm] = useState({
+    name: '',
+    description: '',
+    quantity: 4,
+    validity_days: 30,
+    original_price: 0,
+    discounted_price: 0,
+    active: true,
+  });
+
+  // Form states for edit customer package
+  const [editCustomerForm, setEditCustomerForm] = useState({
+    remaining_uses: 0,
+    expires_at: '',
   });
   
   // Form states for sell
@@ -71,7 +113,12 @@ export default function Packages() {
   const { data: customerPackages, isLoading: loadingCustomer } = useCustomerPackages();
   
   const createPackageMutation = useCreateServicePackage();
+  const updatePackageMutation = useUpdateServicePackage();
+  const deletePackageMutation = useDeleteServicePackage();
   const sellPackageMutation = useSellPackage();
+  const useCreditMutation = useUsePackageCredit();
+  const updateCustomerPackageMutation = useUpdateCustomerPackage();
+  const deleteCustomerPackageMutation = useDeleteCustomerPackage();
 
   // Filter pets by selected owner
   const filteredPets = sellForm.owner_id 
@@ -86,7 +133,6 @@ export default function Packages() {
 
     try {
       await createPackageMutation.mutateAsync(newPackage);
-      toast.success('Pacote criado com sucesso!');
       setIsCreateOpen(false);
       setNewPackage({
         name: '',
@@ -99,7 +145,95 @@ export default function Packages() {
         active: true,
       });
     } catch (error) {
-      toast.error('Erro ao criar pacote');
+      // Error handled in hook
+    }
+  };
+
+  const handleEditPackage = (pkg: ServicePackageWithService) => {
+    setEditingPackage(pkg);
+    setEditForm({
+      name: pkg.name,
+      description: pkg.description || '',
+      quantity: pkg.quantity,
+      validity_days: pkg.validity_days,
+      original_price: Number(pkg.original_price),
+      discounted_price: Number(pkg.discounted_price),
+      active: pkg.active,
+    });
+  };
+
+  const handleUpdatePackage = async () => {
+    if (!editingPackage) return;
+    
+    try {
+      await updatePackageMutation.mutateAsync({
+        id: editingPackage.id,
+        ...editForm,
+      });
+      setEditingPackage(null);
+    } catch (error) {
+      // Error handled in hook
+    }
+  };
+
+  const handleDeletePackage = async () => {
+    if (!deletingPackage) return;
+    
+    try {
+      await deletePackageMutation.mutateAsync(deletingPackage.id);
+      setDeletingPackage(null);
+    } catch (error) {
+      // Error handled in hook
+    }
+  };
+
+  const handleEditCustomerPackage = (pkg: CustomerPackageWithDetails) => {
+    setEditingCustomerPackage(pkg);
+    setEditCustomerForm({
+      remaining_uses: pkg.remaining_uses,
+      expires_at: pkg.expires_at.split('T')[0],
+    });
+  };
+
+  const handleUpdateCustomerPackage = async () => {
+    if (!editingCustomerPackage) return;
+    
+    try {
+      await updateCustomerPackageMutation.mutateAsync({
+        id: editingCustomerPackage.id,
+        remaining_uses: editCustomerForm.remaining_uses,
+        expires_at: new Date(editCustomerForm.expires_at).toISOString(),
+      });
+      setEditingCustomerPackage(null);
+    } catch (error) {
+      // Error handled in hook
+    }
+  };
+
+  const handleDeleteCustomerPackage = async () => {
+    if (!deletingCustomerPackage) return;
+    
+    try {
+      await deleteCustomerPackageMutation.mutateAsync(deletingCustomerPackage.id);
+      setDeletingCustomerPackage(null);
+    } catch (error) {
+      // Error handled in hook
+    }
+  };
+
+  const handleUseCredit = async () => {
+    if (!usingCreditPackage) return;
+    
+    try {
+      // Generate a temporary appointment ID for tracking
+      const tempAppointmentId = `manual-${Date.now()}`;
+      await useCreditMutation.mutateAsync({
+        id: usingCreditPackage.id,
+        appointmentId: tempAppointmentId,
+      });
+      setUsingCreditPackage(null);
+    } catch (error) {
+      // Error handled in hook
     }
   };
 
@@ -125,11 +259,10 @@ export default function Packages() {
         discountedPrice: selectedPackage.discounted_price,
         ownerName: selectedOwner?.name,
       });
-      toast.success('Pacote vendido com sucesso!');
       setIsSellOpen(false);
       setSellForm({ package_id: '', owner_id: '', pet_id: '' });
     } catch (error) {
-      toast.error('Erro ao vender pacote');
+      // Error handled in hook
     }
   };
 
@@ -382,17 +515,40 @@ export default function Packages() {
                   <Card
                     key={pkg.id}
                     variant="elevated"
-                    className="hover:shadow-lg transition-all"
+                    className={`hover:shadow-lg transition-all ${!pkg.active ? 'opacity-60' : ''}`}
                   >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
-                        <CardTitle className="text-lg">{pkg.name}</CardTitle>
-                        {discount > 0 && (
-                          <Badge variant="success" className="gap-1">
-                            <Percent className="h-3 w-3" />
-                            {discount}% OFF
-                          </Badge>
-                        )}
+                        <div className="flex-1">
+                          <CardTitle className="text-lg">{pkg.name}</CardTitle>
+                          {!pkg.active && (
+                            <Badge variant="secondary" className="mt-1">Inativo</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {discount > 0 && (
+                            <Badge variant="success" className="gap-1">
+                              <Percent className="h-3 w-3" />
+                              {discount}% OFF
+                            </Badge>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleEditPackage(pkg)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => setDeletingPackage(pkg)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                       <p className="text-sm text-muted-foreground">{pkg.description}</p>
                     </CardHeader>
@@ -420,6 +576,7 @@ export default function Packages() {
                           <Button 
                             size="sm" 
                             className="gap-1"
+                            disabled={!pkg.active}
                             onClick={() => {
                               setSellForm({ ...sellForm, package_id: pkg.id });
                               setIsSellOpen(true);
@@ -492,9 +649,34 @@ export default function Packages() {
                               : `Expira em ${daysUntilExpiry} dias`
                             }
                           </Badge>
-                          <Button variant="outline" size="sm" disabled={isExpired || sold.remaining_uses === 0}>
-                            Usar Crédito
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button 
+                              variant="default" 
+                              size="sm" 
+                              className="gap-1"
+                              disabled={isExpired || sold.remaining_uses === 0}
+                              onClick={() => setUsingCreditPackage(sold)}
+                            >
+                              <Check className="h-3 w-3" />
+                              Usar Crédito
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleEditCustomerPackage(sold)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => setDeletingCustomerPackage(sold)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
@@ -504,6 +686,207 @@ export default function Packages() {
             </div>
           )}
         </div>
+
+        {/* Edit Package Dialog */}
+        <Dialog open={!!editingPackage} onOpenChange={(open) => !open && setEditingPackage(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Pacote</DialogTitle>
+              <DialogDescription>
+                Atualize as informações do pacote
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Nome do Pacote</Label>
+                <Input 
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Descrição</Label>
+                <Textarea 
+                  value={editForm.description}
+                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Quantidade</Label>
+                  <Input 
+                    type="number" 
+                    value={editForm.quantity}
+                    onChange={(e) => setEditForm({ ...editForm, quantity: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Validade (dias)</Label>
+                  <Input 
+                    type="number" 
+                    value={editForm.validity_days}
+                    onChange={(e) => setEditForm({ ...editForm, validity_days: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Preço Original</Label>
+                  <Input 
+                    type="number" 
+                    value={editForm.original_price}
+                    onChange={(e) => setEditForm({ ...editForm, original_price: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Preço com Desconto</Label>
+                  <Input 
+                    type="number" 
+                    value={editForm.discounted_price}
+                    onChange={(e) => setEditForm({ ...editForm, discounted_price: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="active"
+                  checked={editForm.active}
+                  onChange={(e) => setEditForm({ ...editForm, active: e.target.checked })}
+                  className="h-4 w-4"
+                />
+                <Label htmlFor="active">Pacote ativo</Label>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditingPackage(null)}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleUpdatePackage}
+                disabled={updatePackageMutation.isPending}
+              >
+                {updatePackageMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Salvar
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Package Confirmation */}
+        <AlertDialog open={!!deletingPackage} onOpenChange={(open) => !open && setDeletingPackage(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir Pacote</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir o pacote "{deletingPackage?.name}"?
+                Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleDeletePackage}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deletePackageMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Edit Customer Package Dialog */}
+        <Dialog open={!!editingCustomerPackage} onOpenChange={(open) => !open && setEditingCustomerPackage(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Pacote do Cliente</DialogTitle>
+              <DialogDescription>
+                Ajuste os créditos ou validade do pacote
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Usos Restantes</Label>
+                <Input 
+                  type="number" 
+                  value={editCustomerForm.remaining_uses}
+                  onChange={(e) => setEditCustomerForm({ ...editCustomerForm, remaining_uses: parseInt(e.target.value) || 0 })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Data de Expiração</Label>
+                <Input 
+                  type="date" 
+                  value={editCustomerForm.expires_at}
+                  onChange={(e) => setEditCustomerForm({ ...editCustomerForm, expires_at: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditingCustomerPackage(null)}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleUpdateCustomerPackage}
+                disabled={updateCustomerPackageMutation.isPending}
+              >
+                {updateCustomerPackageMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Salvar
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Customer Package Confirmation */}
+        <AlertDialog open={!!deletingCustomerPackage} onOpenChange={(open) => !open && setDeletingCustomerPackage(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir Pacote do Cliente</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir o pacote de "{deletingCustomerPackage?.owners?.name}"?
+                Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleDeleteCustomerPackage}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleteCustomerPackageMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Use Credit Confirmation */}
+        <AlertDialog open={!!usingCreditPackage} onOpenChange={(open) => !open && setUsingCreditPackage(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Utilizar Crédito</AlertDialogTitle>
+              <AlertDialogDescription>
+                Confirma a utilização de 1 crédito do pacote "{usingCreditPackage?.service_packages?.name}" 
+                de {usingCreditPackage?.owners?.name}?
+                <br />
+                <span className="font-medium">
+                  Créditos restantes após uso: {(usingCreditPackage?.remaining_uses || 1) - 1}
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleUseCredit}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                {useCreditMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Confirmar Uso
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </MainLayout>
   );
