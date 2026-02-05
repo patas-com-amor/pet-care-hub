@@ -391,6 +391,45 @@ export type Database = {
         }
         Relationships: []
       }
+      tabela_precos_goodzap: {
+        Row: {
+          active: boolean
+          commission_percentage: number | null
+          created_at: string
+          department_id: Database["public"]["Enums"]["department_id"]
+          duration: number
+          id: string
+          name: string
+          price_grande_porte: number | null
+          price_medio_porte: number | null
+          price_pequeno_porte: number
+        }
+        Insert: {
+          active?: boolean
+          commission_percentage?: number | null
+          created_at?: string
+          department_id: Database["public"]["Enums"]["department_id"]
+          duration?: number
+          id?: string
+          name: string
+          price_grande_porte?: number | null
+          price_medio_porte?: number | null
+          price_pequeno_porte?: number
+        }
+        Update: {
+          active?: boolean
+          commission_percentage?: number | null
+          created_at?: string
+          department_id?: Database["public"]["Enums"]["department_id"]
+          duration?: number
+          id?: string
+          name?: string
+          price_grande_porte?: number | null
+          price_medio_porte?: number | null
+          price_pequeno_porte?: number
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number
