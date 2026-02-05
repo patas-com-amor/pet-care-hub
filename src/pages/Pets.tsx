@@ -50,11 +50,13 @@ import {
 import { usePets, useCreatePet, useUpdatePet, useDeletePet, PetSpecies, PetSize, PetWithOwner } from '@/hooks/usePets';
 import { useOwners } from '@/hooks/useOwners';
 import { useAppointments } from '@/hooks/useAppointments';
+import { useCustomerPackages } from '@/hooks/usePackages';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Package } from 'lucide-react';
 
 const behaviorLabels: Record<string, { label: string; color: string }> = {
   bites: { label: 'Morde', color: 'destructive' },
