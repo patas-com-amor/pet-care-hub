@@ -525,6 +525,36 @@ export default function Pets() {
                     </p>
                   )}
 
+                  {/* Active Packages */}
+                  {getPetPackages(pet.id).length > 0 && (
+                    <div className="mt-3 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                      <div className="flex items-center gap-2 text-sm text-primary font-medium mb-2">
+                        <Package className="h-4 w-4" />
+                        <span>Pacotes Ativos</span>
+                      </div>
+                      <div className="space-y-2">
+                        {getPetPackages(pet.id).map((pkg) => {
+                          const daysUntilExpiry = Math.ceil(
+                            (new Date(pkg.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+                          );
+                          return (
+                            <div key={pkg.id} className="flex items-center justify-between text-sm">
+                              <span className="text-foreground">{pkg.service_packages?.name}</span>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="secondary" className="text-xs">
+                                  {pkg.remaining_uses} créditos
+                                </Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  {daysUntilExpiry}d
+                                </Badge>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex gap-2 mt-4">
                     <Button 
                       variant="outline" 
