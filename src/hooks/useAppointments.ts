@@ -287,6 +287,34 @@ export function useCheckOut() {
 
       if (error) throw error;
 
+      // If appointment uses a package, automatically deduct a credit
+      if (isPackageAppointment && data.package_id) {
+        const { data: customerPkg, error: pkgFetchError } = await supabase
+          .from('customer_packages')
+          .select('id, remaining_uses, used_appointments')
+          .eq('package_id', data.package_id)
+          .eq('pet_id', data.pet_id)
+          .gt('remaining_uses', 0)
+          .gt('expires_at', new Date().toISOString())
+          .order('expires_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (!pkgFetchError && customerPkg) {
+          const { error: pkgUpdateError } = await supabase
+            .from('customer_packages')
+            .update({
+              remaining_uses: customerPkg.remaining_uses - 1,
+              used_appointments: [...(customerPkg.used_appointments || []), id],
+            })
+            .eq('id', customerPkg.id);
+
+          if (pkgUpdateError) {
+            console.error('Error deducting package credit:', pkgUpdateError);
+          }
+        }
+      }
+
       // Create income transaction for service (only if not using package credit)
       if (!isPackageAppointment && price > 0) {
         const { error: transactionError } = await supabase
