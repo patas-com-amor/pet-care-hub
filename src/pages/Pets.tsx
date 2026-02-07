@@ -50,13 +50,13 @@ import {
 import { usePets, useCreatePet, useUpdatePet, useDeletePet, PetSpecies, PetSize, PetWithOwner } from '@/hooks/usePets';
 import { useOwners } from '@/hooks/useOwners';
 import { useAppointments } from '@/hooks/useAppointments';
-import { useCustomerPackages } from '@/hooks/usePackages';
+import { useCustomerPackages, useUsePackageCredit } from '@/hooks/usePackages';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Package } from 'lucide-react';
+import { Package, Minus } from 'lucide-react';
 
 const behaviorLabels: Record<string, { label: string; color: string }> = {
   bites: { label: 'Morde', color: 'destructive' },
@@ -98,6 +98,7 @@ export default function Pets() {
     notes: '',
   });
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [usingCreditPkgId, setUsingCreditPkgId] = useState<string | null>(null);
   const [petPhotos, setPetPhotos] = useState<{ url: string; type: string; date: string }[]>([]);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -108,6 +109,7 @@ export default function Pets() {
   const createPet = useCreatePet();
   const updatePet = useUpdatePet();
   const deletePet = useDeletePet();
+  const useCredit = useUsePackageCredit();
 
   // Get pet packages
   const getPetPackages = (petId: string) => {
@@ -538,16 +540,31 @@ export default function Pets() {
                             (new Date(pkg.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
                           );
                           return (
-                            <div key={pkg.id} className="flex items-center justify-between text-sm">
-                              <span className="text-foreground">{pkg.service_packages?.name}</span>
-                              <div className="flex items-center gap-2">
-                                <Badge variant="secondary" className="text-xs">
-                                  {pkg.remaining_uses} créditos
-                                </Badge>
-                                <Badge variant="outline" className="text-xs">
-                                  {daysUntilExpiry}d
-                                </Badge>
+                            <div key={pkg.id} className="space-y-1">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-foreground">{pkg.service_packages?.name}</span>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="secondary" className="text-xs">
+                                    {pkg.remaining_uses} créditos
+                                  </Badge>
+                                  <Badge variant="outline" className="text-xs">
+                                    {daysUntilExpiry}d
+                                  </Badge>
+                                </div>
                               </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full gap-1 h-7 text-xs"
+                                disabled={pkg.remaining_uses <= 0 || useCredit.isPending}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setUsingCreditPkgId(pkg.id);
+                                }}
+                              >
+                                <Minus className="h-3 w-3" />
+                                Usar Crédito
+                              </Button>
                             </div>
                           );
                         })}
@@ -600,6 +617,31 @@ export default function Pets() {
             ))}
           </div>
         )}
+
+        {/* Use Credit Confirmation */}
+        <AlertDialog open={!!usingCreditPkgId} onOpenChange={(open) => !open && setUsingCreditPkgId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Usar Crédito</AlertDialogTitle>
+              <AlertDialogDescription>
+                Deseja utilizar 1 crédito deste pacote? Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (usingCreditPkgId) {
+                    useCredit.mutate({ id: usingCreditPkgId, appointmentId: '' });
+                    setUsingCreditPkgId(null);
+                  }
+                }}
+              >
+                Confirmar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Pet History Dialog */}
         <Dialog open={!!selectedPet} onOpenChange={(open) => !open && setSelectedPet(null)}>
