@@ -305,7 +305,7 @@ export function useUsePackageCredit() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, appointmentId }: { id: string; appointmentId: string }) => {
+    mutationFn: async ({ id, appointmentId }: { id: string; appointmentId?: string }) => {
       // First get current package data
       const { data: current, error: fetchError } = await supabase
         .from('customer_packages')
@@ -317,11 +317,15 @@ export function useUsePackageCredit() {
       if (!current) throw new Error('Pacote não encontrado');
       if (current.remaining_uses <= 0) throw new Error('Pacote sem créditos disponíveis');
 
+      const updatedAppointments = appointmentId
+        ? [...(current.used_appointments || []), appointmentId]
+        : current.used_appointments || [];
+
       const { data, error } = await supabase
         .from('customer_packages')
         .update({
           remaining_uses: current.remaining_uses - 1,
-          used_appointments: [...(current.used_appointments || []), appointmentId],
+          used_appointments: updatedAppointments,
         })
         .eq('id', id)
         .select()
