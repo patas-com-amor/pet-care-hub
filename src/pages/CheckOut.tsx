@@ -123,7 +123,6 @@ export default function CheckOut() {
         employeeId: selectedAppointment.employee_id,
         employeeName: selectedAppointment.employees?.name,
         commissionPercentage,
-        isPackageAppointment: !!selectedAppointment.package_id,
       });
 
       // Send notification via n8n webhook if configured
