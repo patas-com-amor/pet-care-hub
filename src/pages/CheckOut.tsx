@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ import {
   Send,
   CheckCircle,
   Loader2,
+  Gift,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -51,7 +52,51 @@ export default function CheckOut() {
       apt.owners?.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const [usePackageCredit, setUsePackageCredit] = useState(false);
+  const [matchingPackage, setMatchingPackage] = useState<{ id: string; remaining_uses: number; packageName: string } | null>(null);
+  const [loadingPackage, setLoadingPackage] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+
+  // Check for active package when appointment is selected
+  useEffect(() => {
+    async function checkPackage() {
+      if (!selectedAppointment) {
+        setMatchingPackage(null);
+        setUsePackageCredit(false);
+        return;
+      }
+      setLoadingPackage(true);
+      try {
+        const { data: pkgs } = await supabase
+          .from('customer_packages')
+          .select('id, remaining_uses, service_packages!inner(service_id, name)')
+          .eq('pet_id', selectedAppointment.pet_id)
+          .gt('remaining_uses', 0)
+          .gt('expires_at', new Date().toISOString());
+
+        if (pkgs && pkgs.length > 0) {
+          const match = pkgs.find(
+            (pkg: any) => pkg.service_packages?.service_id === selectedAppointment.service_id
+          );
+          if (match) {
+            setMatchingPackage({
+              id: match.id,
+              remaining_uses: match.remaining_uses,
+              packageName: (match as any).service_packages?.name || 'Pacote',
+            });
+          } else {
+            setMatchingPackage(null);
+          }
+        } else {
+          setMatchingPackage(null);
+        }
+      } catch {
+        setMatchingPackage(null);
+      }
+      setLoadingPackage(false);
+    }
+    checkPackage();
+  }, [selectedAppointment]);
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -123,6 +168,8 @@ export default function CheckOut() {
         employeeId: selectedAppointment.employee_id,
         employeeName: selectedAppointment.employees?.name,
         commissionPercentage,
+        usePackageCredit: usePackageCredit && !!matchingPackage,
+        customerPackageId: usePackageCredit ? matchingPackage?.id : undefined,
       });
 
       // Send notification via n8n webhook if configured
@@ -165,6 +212,7 @@ export default function CheckOut() {
     setAfterPhoto(null);
     setPhotoFile(null);
     setNotes('');
+    setUsePackageCredit(false);
   };
 
   return (
@@ -350,6 +398,35 @@ export default function CheckOut() {
                 />
               </div>
 
+              {/* Package Credit */}
+              {!loadingPackage && matchingPackage && (
+                <div
+                  className={`p-4 rounded-lg border-2 transition-colors cursor-pointer ${
+                    usePackageCredit
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border bg-muted/30 hover:border-primary/50'
+                  }`}
+                  onClick={() => setUsePackageCredit(!usePackageCredit)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Gift className="h-5 w-5 text-primary" />
+                      <div>
+                        <p className="font-medium text-sm text-foreground">
+                          Usar Crédito do Pacote
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {matchingPackage.packageName} — {matchingPackage.remaining_uses} crédito(s) restante(s)
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant={usePackageCredit ? 'default' : 'outline'}>
+                      {usePackageCredit ? 'Ativado' : 'Usar'}
+                    </Badge>
+                  </div>
+                </div>
+              )}
+
               {/* Summary */}
               <div className="p-4 bg-secondary/50 rounded-lg space-y-2">
                 <div className="flex justify-between text-sm">
@@ -362,9 +439,16 @@ export default function CheckOut() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Valor:</span>
-                  <span className="font-semibold text-success">
-                    R$ {Number(selectedAppointment?.price || 0).toFixed(2)}
-                  </span>
+                  {usePackageCredit ? (
+                    <span className="font-semibold text-primary flex items-center gap-1">
+                      <Gift className="h-3 w-3" />
+                      Crédito do Pacote
+                    </span>
+                  ) : (
+                    <span className="font-semibold text-success">
+                      R$ {Number(selectedAppointment?.price || 0).toFixed(2)}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

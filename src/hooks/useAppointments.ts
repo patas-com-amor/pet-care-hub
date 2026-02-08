@@ -260,6 +260,8 @@ export function useCheckOut() {
       employeeId,
       employeeName,
       commissionPercentage,
+      usePackageCredit,
+      customerPackageId,
     }: { 
       id: string; 
       afterPhotoUrl?: string; 
@@ -269,6 +271,8 @@ export function useCheckOut() {
       employeeId?: string | null;
       employeeName?: string | null;
       commissionPercentage?: number;
+      usePackageCredit?: boolean;
+      customerPackageId?: string;
     }) => {
       // Update appointment status
       const { data, error } = await supabase
@@ -285,25 +289,17 @@ export function useCheckOut() {
 
       if (error) throw error;
 
-      // Auto-detect if pet has an active package for this service
-      let usedPackageCredit = false;
+      let usedCredit = false;
 
-      // Find active customer package matching this service
-      const { data: matchingPkgs, error: pkgSearchError } = await supabase
-        .from('customer_packages')
-        .select('id, remaining_uses, used_appointments, package_id, service_packages!inner(service_id)')
-        .eq('pet_id', data.pet_id)
-        .gt('remaining_uses', 0)
-        .gt('expires_at', new Date().toISOString())
-        .order('expires_at', { ascending: true });
+      // If user chose to use package credit, deduct it
+      if (usePackageCredit && customerPackageId) {
+        const { data: customerPkg, error: pkgFetchError } = await supabase
+          .from('customer_packages')
+          .select('id, remaining_uses, used_appointments')
+          .eq('id', customerPackageId)
+          .single();
 
-      if (!pkgSearchError && matchingPkgs && matchingPkgs.length > 0) {
-        // Find a package whose service matches the appointment's service
-        const customerPkg = matchingPkgs.find(
-          (pkg: any) => pkg.service_packages?.service_id === data.service_id
-        );
-
-        if (customerPkg) {
+        if (!pkgFetchError && customerPkg && customerPkg.remaining_uses > 0) {
           const { error: pkgUpdateError } = await supabase
             .from('customer_packages')
             .update({
@@ -313,7 +309,7 @@ export function useCheckOut() {
             .eq('id', customerPkg.id);
 
           if (!pkgUpdateError) {
-            usedPackageCredit = true;
+            usedCredit = true;
           } else {
             console.error('Error deducting package credit:', pkgUpdateError);
           }
@@ -321,7 +317,7 @@ export function useCheckOut() {
       }
 
       // Create income transaction for service (only if no package credit was used)
-      if (!usedPackageCredit && price > 0) {
+      if (!usedCredit && price > 0) {
         const { error: transactionError } = await supabase
           .from('transactions')
           .insert({
@@ -364,6 +360,7 @@ export function useCheckOut() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['customer-packages'] });
       toast.success('Check-out realizado com sucesso!');
     },
     onError: (error) => {
