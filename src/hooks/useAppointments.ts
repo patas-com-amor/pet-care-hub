@@ -260,7 +260,6 @@ export function useCheckOut() {
       employeeId,
       employeeName,
       commissionPercentage,
-      isPackageAppointment
     }: { 
       id: string; 
       afterPhotoUrl?: string; 
@@ -270,7 +269,6 @@ export function useCheckOut() {
       employeeId?: string | null;
       employeeName?: string | null;
       commissionPercentage?: number;
-      isPackageAppointment?: boolean;
     }) => {
       // Update appointment status
       const { data, error } = await supabase
@@ -287,20 +285,25 @@ export function useCheckOut() {
 
       if (error) throw error;
 
-      // If appointment uses a package, automatically deduct a credit
-      if (isPackageAppointment && data.package_id) {
-        const { data: customerPkg, error: pkgFetchError } = await supabase
-          .from('customer_packages')
-          .select('id, remaining_uses, used_appointments')
-          .eq('package_id', data.package_id)
-          .eq('pet_id', data.pet_id)
-          .gt('remaining_uses', 0)
-          .gt('expires_at', new Date().toISOString())
-          .order('expires_at', { ascending: true })
-          .limit(1)
-          .maybeSingle();
+      // Auto-detect if pet has an active package for this service
+      let usedPackageCredit = false;
 
-        if (!pkgFetchError && customerPkg) {
+      // Find active customer package matching this service
+      const { data: matchingPkgs, error: pkgSearchError } = await supabase
+        .from('customer_packages')
+        .select('id, remaining_uses, used_appointments, package_id, service_packages!inner(service_id)')
+        .eq('pet_id', data.pet_id)
+        .gt('remaining_uses', 0)
+        .gt('expires_at', new Date().toISOString())
+        .order('expires_at', { ascending: true });
+
+      if (!pkgSearchError && matchingPkgs && matchingPkgs.length > 0) {
+        // Find a package whose service matches the appointment's service
+        const customerPkg = matchingPkgs.find(
+          (pkg: any) => pkg.service_packages?.service_id === data.service_id
+        );
+
+        if (customerPkg) {
           const { error: pkgUpdateError } = await supabase
             .from('customer_packages')
             .update({
@@ -309,14 +312,16 @@ export function useCheckOut() {
             })
             .eq('id', customerPkg.id);
 
-          if (pkgUpdateError) {
+          if (!pkgUpdateError) {
+            usedPackageCredit = true;
+          } else {
             console.error('Error deducting package credit:', pkgUpdateError);
           }
         }
       }
 
-      // Create income transaction for service (only if not using package credit)
-      if (!isPackageAppointment && price > 0) {
+      // Create income transaction for service (only if no package credit was used)
+      if (!usedPackageCredit && price > 0) {
         const { error: transactionError } = await supabase
           .from('transactions')
           .insert({
