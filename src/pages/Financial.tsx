@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PendingPaymentCards from '@/components/financial/PendingPaymentCards';
+import TransactionDetailCard from '@/components/financial/TransactionDetailCard';
 import {
   Select,
   SelectContent,
@@ -38,6 +39,7 @@ export default function Financial() {
   const [period, setPeriod] = useState('month');
   const [customDateFrom, setCustomDateFrom] = useState<Date | undefined>(undefined);
   const [customDateTo, setCustomDateTo] = useState<Date | undefined>(undefined);
+  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
 
   // Calculate date range based on period
   const dateRange = useMemo(() => {
@@ -365,7 +367,10 @@ export default function Financial() {
                     {filteredTransactions.slice(0, 20).map((transaction) => (
                       <div
                         key={transaction.id}
-                        className="flex items-center justify-between p-3 rounded-lg bg-secondary/50"
+                        className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 cursor-pointer hover:bg-secondary/80 transition-colors"
+                        onClick={() => setSelectedTransaction(
+                          selectedTransaction?.id === transaction.id ? null : transaction
+                        )}
                       >
                         <div className="flex items-center gap-3">
                           <div
@@ -404,6 +409,12 @@ export default function Financial() {
                         </span>
                       </div>
                     ))}
+                    {selectedTransaction && (
+                      <TransactionDetailCard
+                        transaction={selectedTransaction}
+                        onClose={() => setSelectedTransaction(null)}
+                      />
+                    )}
                   </div>
                 )}
               </CardContent>
