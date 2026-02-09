@@ -18,7 +18,13 @@ export interface Transaction {
 }
 
 export interface TransactionWithDetails extends Transaction {
-  appointments: { id: string; pets: { name: string } | null } | null;
+  payment_method: string | null;
+  appointments: {
+    id: string;
+    pets: { name: string } | null;
+    owners: { name: string; phone: string | null } | null;
+    services: { name: string } | null;
+  } | null;
   employees: { id: string; name: string } | null;
 }
 
@@ -33,7 +39,7 @@ export function useTransactions() {
         .from('transactions')
         .select(`
           *,
-          appointments (id, pets (name)),
+          appointments (id, pets (name), owners (name, phone), services (name)),
           employees (id, name)
         `)
         .order('date', { ascending: false })
