@@ -350,8 +350,54 @@ export default function Financial() {
 
           <TabsContent value="transactions">
             <Card variant="elevated">
-              <CardHeader>
-                <CardTitle>Últimas Transações</CardTitle>
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <CardTitle>Transações</CardTitle>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select value={period} onValueChange={(value) => {
+                    setPeriod(value);
+                    if (value !== 'custom') {
+                      setCustomDateFrom(undefined);
+                      setCustomDateTo(undefined);
+                    }
+                  }}>
+                    <SelectTrigger className="w-44">
+                      <SelectValue placeholder="Período" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="today">Hoje</SelectItem>
+                      <SelectItem value="week">Esta Semana</SelectItem>
+                      <SelectItem value="month">Este Mês</SelectItem>
+                      <SelectItem value="year">Este Ano</SelectItem>
+                      <SelectItem value="custom">Personalizado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {period === 'custom' && (
+                    <div className="flex items-center gap-2">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className={cn("w-[130px] justify-start text-left font-normal", !customDateFrom && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {customDateFrom ? format(customDateFrom, "dd/MM/yyyy") : "De"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar mode="single" selected={customDateFrom} onSelect={setCustomDateFrom} initialFocus className="p-3 pointer-events-auto" />
+                        </PopoverContent>
+                      </Popover>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className={cn("w-[130px] justify-start text-left font-normal", !customDateTo && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {customDateTo ? format(customDateTo, "dd/MM/yyyy") : "Até"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar mode="single" selected={customDateTo} onSelect={setCustomDateTo} disabled={(date) => customDateFrom ? date < customDateFrom : false} initialFocus className="p-3 pointer-events-auto" />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {loadingTransactions ? (
