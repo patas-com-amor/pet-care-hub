@@ -316,24 +316,8 @@ export function useCheckOut() {
         }
       }
 
-      // Create income transaction for service (only if no package credit was used)
-      if (!usedCredit && price > 0) {
-        const { error: transactionError } = await supabase
-          .from('transactions')
-          .insert({
-            type: 'income',
-            category: 'service',
-            description: `Serviço: ${serviceName}`,
-            amount: price,
-            appointment_id: id,
-            employee_id: employeeId || null,
-            date: new Date().toISOString().split('T')[0],
-          });
-
-        if (transactionError) {
-          console.error('Error creating service transaction:', transactionError);
-        }
-      }
+      // Income transaction is NO LONGER created here.
+      // It will be created when payment is confirmed in the Financial page.
 
       // Create commission expense transaction if employee has commission
       if (employeeId && commissionPercentage && commissionPercentage > 0 && price > 0) {
