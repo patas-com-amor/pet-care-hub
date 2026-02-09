@@ -440,6 +440,7 @@ export type Database = {
           description: string
           employee_id: string | null
           id: string
+          payment_method: string | null
           type: Database["public"]["Enums"]["transaction_type"]
         }
         Insert: {
@@ -451,6 +452,7 @@ export type Database = {
           description: string
           employee_id?: string | null
           id?: string
+          payment_method?: string | null
           type: Database["public"]["Enums"]["transaction_type"]
         }
         Update: {
@@ -462,6 +464,7 @@ export type Database = {
           description?: string
           employee_id?: string | null
           id?: string
+          payment_method?: string | null
           type?: Database["public"]["Enums"]["transaction_type"]
         }
         Relationships: [

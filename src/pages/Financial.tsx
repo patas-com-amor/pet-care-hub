@@ -3,6 +3,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import PendingPaymentCards from '@/components/financial/PendingPaymentCards';
 import {
   Select,
   SelectContent,
@@ -281,11 +282,23 @@ export default function Financial() {
         )}
 
         {/* Revenue Breakdown */}
-        <Tabs defaultValue="categories" className="space-y-4">
+        <Tabs defaultValue="pending" className="space-y-4">
           <TabsList>
+            <TabsTrigger value="pending">Pagamentos Pendentes</TabsTrigger>
             <TabsTrigger value="categories">Por Categoria</TabsTrigger>
             <TabsTrigger value="transactions">Transações</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="pending">
+            <Card variant="elevated">
+              <CardHeader>
+                <CardTitle>Checkouts Pendentes de Pagamento</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PendingPaymentCards />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="categories">
             <Card variant="elevated">
