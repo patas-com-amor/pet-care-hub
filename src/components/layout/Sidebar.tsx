@@ -25,6 +25,11 @@ import {
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 
+interface SidebarProps {
+  mobile?: boolean;
+  onNavigate?: () => void;
+}
+
 const departmentIcons = {
   estetica: Sparkles,
   saude: Heart,
@@ -41,15 +46,21 @@ const departmentColors = {
   logistica: 'text-dept-logistica',
 };
 
-export function Sidebar() {
+export function Sidebar({ mobile, onNavigate }: SidebarProps) {
   const { isDepartmentEnabled } = useSettings();
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
 
+  const effectiveCollapsed = mobile ? false : collapsed;
+
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
+  };
+
+  const handleNav = () => {
+    onNavigate?.();
   };
 
   const mainNavItems = [
@@ -75,6 +86,7 @@ export function Sidebar() {
   const NavItem = ({ to, icon: Icon, label, colorClass }: { to: string; icon: any; label: string; colorClass?: string }) => (
     <NavLink
       to={to}
+      onClick={handleNav}
       className={({ isActive }) =>
         cn(
           'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group',
@@ -85,20 +97,15 @@ export function Sidebar() {
       }
     >
       <Icon className={cn('h-5 w-5 shrink-0', colorClass)} />
-      {!collapsed && <span className="font-medium">{label}</span>}
+      {!effectiveCollapsed && <span className="font-medium">{label}</span>}
     </NavLink>
   );
 
-  return (
-    <aside
-      className={cn(
-        'fixed left-0 top-0 z-40 h-screen bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col',
-        collapsed ? 'w-16' : 'w-64'
-      )}
-    >
+  const sidebarContent = (
+    <>
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
-        {!collapsed && (
+        {!effectiveCollapsed && (
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
               <PawPrint className="h-5 w-5 text-primary-foreground" />
@@ -106,36 +113,32 @@ export function Sidebar() {
             <span className="font-bold text-lg text-sidebar-foreground">PetShop</span>
           </div>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setCollapsed(!collapsed)}
-          className="shrink-0"
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </Button>
+        {!mobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setCollapsed(!collapsed)}
+            className="shrink-0"
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </Button>
+        )}
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto p-3 space-y-6">
-        {/* Main */}
         <div className="space-y-1">
-          {!collapsed && (
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">
-              Principal
-            </p>
+          {!effectiveCollapsed && (
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">Principal</p>
           )}
           {mainNavItems.map((item) => (
             <NavItem key={item.to} {...item} />
           ))}
         </div>
 
-        {/* Departments */}
         <div className="space-y-1">
-          {!collapsed && (
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">
-              Departamentos
-            </p>
+          {!effectiveCollapsed && (
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">Departamentos</p>
           )}
           {Object.entries(departmentIcons).map(([deptId, Icon]) => {
             if (!isDepartmentEnabled(deptId as any)) return null;
@@ -158,24 +161,18 @@ export function Sidebar() {
           })}
         </div>
 
-        {/* CRM */}
         <div className="space-y-1">
-          {!collapsed && (
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">
-              CRM
-            </p>
+          {!effectiveCollapsed && (
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">CRM</p>
           )}
           {crmNavItems.map((item) => (
             <NavItem key={item.to} {...item} />
           ))}
         </div>
 
-        {/* Business */}
         <div className="space-y-1">
-          {!collapsed && (
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">
-              Negócio
-            </p>
+          {!effectiveCollapsed && (
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">Negócio</p>
           )}
           {businessNavItems.map((item) => (
             <NavItem key={item.to} {...item} />
@@ -188,26 +185,41 @@ export function Sidebar() {
         {isAdmin && (
           <NavItem to="/configuracoes" icon={Settings} label="Configurações" />
         )}
-        
-        {/* User info and logout */}
         <div className="pt-2 border-t border-sidebar-border mt-2">
-          {!collapsed && user && (
-            <p className="text-xs text-muted-foreground px-3 mb-2 truncate">
-              {user.email}
-            </p>
+          {!effectiveCollapsed && user && (
+            <p className="text-xs text-muted-foreground px-3 mb-2 truncate">{user.email}</p>
           )}
           <button
-            onClick={handleSignOut}
+            onClick={() => { handleNav(); handleSignOut(); }}
             className={cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full',
               'text-sidebar-foreground hover:bg-destructive hover:text-destructive-foreground'
             )}
           >
             <Power className="h-5 w-5 shrink-0" />
-            {!collapsed && <span className="font-medium">Sair</span>}
+            {!effectiveCollapsed && <span className="font-medium">Sair</span>}
           </button>
         </div>
       </div>
+    </>
+  );
+
+  if (mobile) {
+    return (
+      <div className="flex flex-col h-full bg-sidebar">
+        {sidebarContent}
+      </div>
+    );
+  }
+
+  return (
+    <aside
+      className={cn(
+        'fixed left-0 top-0 z-40 h-screen bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col',
+        effectiveCollapsed ? 'w-16' : 'w-64'
+      )}
+    >
+      {sidebarContent}
     </aside>
   );
 }
