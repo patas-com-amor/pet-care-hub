@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export type AppointmentStatus = 'scheduled' | 'confirmed' | 'checked_in' | 'in_progress' | 'completed' | 'cancelled';
-export type DepartmentId = 'estetica' | 'saude' | 'educacao' | 'estadia' | 'logistica';
+export type DepartmentId = 'estetica' | 'saude' | 'educacao' | 'estadia' | 'logistica' | 'produtos';
 
 export interface Appointment {
   id: string;
