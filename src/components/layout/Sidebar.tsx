@@ -37,6 +37,7 @@ const departmentIcons = {
   educacao: GraduationCap,
   estadia: Home,
   logistica: Truck,
+  produtos: ShoppingBag,
 };
 
 const departmentColors = {
@@ -45,6 +46,7 @@ const departmentColors = {
   educacao: 'text-dept-educacao',
   estadia: 'text-dept-estadia',
   logistica: 'text-dept-logistica',
+  produtos: 'text-primary',
 };
 
 export function Sidebar({ mobile, onNavigate }: SidebarProps) {
