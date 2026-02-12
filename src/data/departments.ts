@@ -61,6 +61,14 @@ export const departments: Department[] = [
       { id: 'traz', name: 'Apenas Entregar', departmentId: 'logistica', duration: 30, price: 25 },
     ],
   },
+  {
+    id: 'produtos',
+    name: 'Produtos',
+    description: 'Venda de produtos para pets',
+    icon: 'ShoppingBag',
+    enabled: true,
+    services: [],
+  },
 ];
 
 export const getDepartmentById = (id: string): Department | undefined => {

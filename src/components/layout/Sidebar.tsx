@@ -151,6 +151,7 @@ export function Sidebar({ mobile, onNavigate }: SidebarProps) {
               educacao: 'Educação',
               estadia: 'Estadia',
               logistica: 'Logística',
+              produtos: 'Produtos',
             };
             return (
               <NavItem

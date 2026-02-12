@@ -17,6 +17,7 @@ import {
   Truck,
   Save,
   Link,
+  ShoppingBag,
 } from 'lucide-react';
 import { toast } from 'sonner';
 

@@ -1,5 +1,5 @@
 // Department types
-export type DepartmentId = 'estetica' | 'saude' | 'educacao' | 'estadia' | 'logistica';
+export type DepartmentId = 'estetica' | 'saude' | 'educacao' | 'estadia' | 'logistica' | 'produtos';
 
 export interface Department {
   id: DepartmentId;
