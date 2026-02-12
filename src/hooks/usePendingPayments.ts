@@ -55,9 +55,20 @@ export function usePendingPayments() {
         (paidTransactions || []).map(t => t.appointment_id)
       );
 
-      // Filter out already paid appointments
+      // Get appointment IDs that used package credits
+      const { data: customerPkgs, error: pkgError } = await supabase
+        .from('customer_packages')
+        .select('used_appointments');
+
+      if (pkgError) throw pkgError;
+
+      const creditAppointmentIds = new Set(
+        (customerPkgs || []).flatMap(p => p.used_appointments || [])
+      );
+
+      // Filter out already paid and package-credit appointments
       return completedAppointments.filter(
-        a => !paidAppointmentIds.has(a.id)
+        a => !paidAppointmentIds.has(a.id) && !creditAppointmentIds.has(a.id)
       ) as PendingPaymentAppointment[];
     },
   });
