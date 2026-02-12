@@ -308,6 +308,120 @@ export type Database = {
           },
         ]
       }
+      product_sales: {
+        Row: {
+          created_at: string
+          employee_id: string | null
+          id: string
+          notes: string | null
+          owner_id: string | null
+          payment_method: string | null
+          pet_id: string | null
+          product_id: string
+          quantity: number
+          total_amount: number
+          transaction_id: string | null
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          employee_id?: string | null
+          id?: string
+          notes?: string | null
+          owner_id?: string | null
+          payment_method?: string | null
+          pet_id?: string | null
+          product_id: string
+          quantity?: number
+          total_amount: number
+          transaction_id?: string | null
+          unit_price: number
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string | null
+          id?: string
+          notes?: string | null
+          owner_id?: string | null
+          payment_method?: string | null
+          pet_id?: string | null
+          product_id?: string
+          quantity?: number
+          total_amount?: number
+          transaction_id?: string | null
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_sales_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_sales_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "owners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_sales_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_sales_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_sales_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          active: boolean
+          category: string
+          created_at: string
+          id: string
+          name: string
+          price: number
+          stock_quantity: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          id?: string
+          name: string
+          price?: number
+          stock_quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          id?: string
+          name?: string
+          price?: number
+          stock_quantity?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       service_packages: {
         Row: {
           active: boolean
@@ -531,7 +645,13 @@ export type Database = {
         | "in_progress"
         | "completed"
         | "cancelled"
-      department_id: "estetica" | "saude" | "educacao" | "estadia" | "logistica"
+      department_id:
+        | "estetica"
+        | "saude"
+        | "educacao"
+        | "estadia"
+        | "logistica"
+        | "produtos"
       employee_role:
         | "admin"
         | "manager"
@@ -685,7 +805,14 @@ export const Constants = {
         "completed",
         "cancelled",
       ],
-      department_id: ["estetica", "saude", "educacao", "estadia", "logistica"],
+      department_id: [
+        "estetica",
+        "saude",
+        "educacao",
+        "estadia",
+        "logistica",
+        "produtos",
+      ],
       employee_role: [
         "admin",
         "manager",
