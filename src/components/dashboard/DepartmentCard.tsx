@@ -55,7 +55,7 @@ export function DepartmentCard({ department, appointmentsToday = 0 }: Department
         <div className={cn('p-3 rounded-xl', styles.bg)}>
           <Icon className={cn('h-6 w-6', styles.text)} />
         </div>
-        <Badge variant={department.id}>{appointmentsToday} hoje</Badge>
+        <Badge variant={department.id === 'produtos' ? 'secondary' : department.id as any}>{department.id === 'produtos' ? 'produtos' : `${appointmentsToday} hoje`}</Badge>
       </div>
       
       <h3 className="font-semibold text-lg text-foreground mb-1">{department.name}</h3>
