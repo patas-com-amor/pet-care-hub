@@ -19,6 +19,7 @@ import Settings from "./pages/Settings";
 import Department from "./pages/Department";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import Products from "./pages/Products";
 
 const queryClient = new QueryClient();
 
