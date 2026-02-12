@@ -156,7 +156,7 @@ export function Sidebar({ mobile, onNavigate }: SidebarProps) {
             return (
               <NavItem
                 key={deptId}
-                to={`/departamento/${deptId}`}
+                to={deptId === 'produtos' ? '/produtos' : `/departamento/${deptId}`}
                 icon={Icon}
                 label={deptNames[deptId]}
                 colorClass={departmentColors[deptId as keyof typeof departmentColors]}
