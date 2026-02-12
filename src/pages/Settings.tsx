@@ -17,15 +17,17 @@ import {
   Truck,
   Save,
   Link,
+  ShoppingBag,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const departmentIcons = {
+const departmentIcons: Record<string, any> = {
   estetica: Sparkles,
   saude: Heart,
   educacao: GraduationCap,
   estadia: Home,
   logistica: Truck,
+  produtos: ShoppingBag,
 };
 
 const departmentColors: Record<DepartmentId, string> = {
@@ -34,6 +36,7 @@ const departmentColors: Record<DepartmentId, string> = {
   educacao: 'text-dept-educacao',
   estadia: 'text-dept-estadia',
   logistica: 'text-dept-logistica',
+  produtos: 'text-primary',
 };
 
 export default function Settings() {

@@ -8,6 +8,7 @@ const defaultSettings: AppSettings = {
     educacao: true,
     estadia: true,
     logistica: true,
+    produtos: true,
   },
   businessName: 'PetShop Manager',
   businessPhone: '',

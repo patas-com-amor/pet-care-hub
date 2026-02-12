@@ -10,15 +10,17 @@ import {
   Home,
   Truck,
   ArrowRight,
+  ShoppingBag,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const departmentIcons = {
+const departmentIcons: Record<DepartmentId, any> = {
   estetica: Sparkles,
   saude: Heart,
   educacao: GraduationCap,
   estadia: Home,
   logistica: Truck,
+  produtos: ShoppingBag,
 };
 
 const departmentStyles: Record<DepartmentId, { bg: string; text: string; border: string }> = {
@@ -27,6 +29,7 @@ const departmentStyles: Record<DepartmentId, { bg: string; text: string; border:
   educacao: { bg: 'bg-dept-educacao/10', text: 'text-dept-educacao', border: 'border-dept-educacao/30' },
   estadia: { bg: 'bg-dept-estadia/10', text: 'text-dept-estadia', border: 'border-dept-estadia/30' },
   logistica: { bg: 'bg-dept-logistica/10', text: 'text-dept-logistica', border: 'border-dept-logistica/30' },
+  produtos: { bg: 'bg-primary/10', text: 'text-primary', border: 'border-primary/30' },
 };
 
 interface DepartmentCardProps {
@@ -52,7 +55,7 @@ export function DepartmentCard({ department, appointmentsToday = 0 }: Department
         <div className={cn('p-3 rounded-xl', styles.bg)}>
           <Icon className={cn('h-6 w-6', styles.text)} />
         </div>
-        <Badge variant={department.id}>{appointmentsToday} hoje</Badge>
+        <Badge variant={department.id === 'produtos' ? 'secondary' : department.id as any}>{department.id === 'produtos' ? 'produtos' : `${appointmentsToday} hoje`}</Badge>
       </div>
       
       <h3 className="font-semibold text-lg text-foreground mb-1">{department.name}</h3>

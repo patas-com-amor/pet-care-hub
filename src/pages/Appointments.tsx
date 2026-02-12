@@ -93,6 +93,7 @@ const departmentLabels: Record<DepartmentId, string> = {
   educacao: 'Educação',
   estadia: 'Estadia',
   logistica: 'Logística',
+  produtos: 'Produtos',
 };
 
 export default function Appointments() {

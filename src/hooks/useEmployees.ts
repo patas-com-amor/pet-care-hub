@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export type EmployeeRole = 'admin' | 'manager' | 'groomer' | 'veterinarian' | 'trainer' | 'receptionist' | 'driver';
-export type DepartmentId = 'estetica' | 'saude' | 'educacao' | 'estadia' | 'logistica';
+export type DepartmentId = 'estetica' | 'saude' | 'educacao' | 'estadia' | 'logistica' | 'produtos';
 
 export interface Employee {
   id: string;

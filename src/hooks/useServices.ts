@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export type DepartmentId = 'estetica' | 'saude' | 'educacao' | 'estadia' | 'logistica';
+export type DepartmentId = 'estetica' | 'saude' | 'educacao' | 'estadia' | 'logistica' | 'produtos';
 
 export interface Service {
   id: string;
