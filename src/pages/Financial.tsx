@@ -202,7 +202,7 @@ export default function Financial() {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <Card variant="elevated">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
@@ -237,6 +237,25 @@ export default function Financial() {
                   </div>
                   <div className="p-3 rounded-xl bg-primary/10">
                     <Sparkles className="h-6 w-6 text-primary" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card variant="elevated">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Receita Produtos</p>
+                    <p className="text-3xl font-bold text-foreground mt-1">
+                      R$ {(revenueByCategory.find(c => c.category === 'product')?.revenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      {revenueByCategory.find(c => c.category === 'product')?.count || 0} vendas
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-warning/10">
+                    <ShoppingBag className="h-6 w-6 text-warning" />
                   </div>
                 </div>
               </CardContent>
