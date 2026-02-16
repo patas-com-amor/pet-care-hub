@@ -49,7 +49,7 @@ export function DepartmentCard({ department, appointmentsToday = 0 }: Department
         'p-5 transition-all duration-300 hover:shadow-lg cursor-pointer group border-2',
         styles.border
       )}
-      onClick={() => navigate(`/departamento/${department.id}`)}
+      onClick={() => navigate(department.id === 'produtos' ? '/produtos' : `/departamento/${department.id}`)}
     >
       <div className="flex items-start justify-between mb-4">
         <div className={cn('p-3 rounded-xl', styles.bg)}>
