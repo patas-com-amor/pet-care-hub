@@ -20,6 +20,9 @@ import {
   ShoppingBag,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Eye, EyeOff, Lock } from 'lucide-react';
 
 const departmentIcons: Record<string, any> = {
   estetica: Sparkles,
