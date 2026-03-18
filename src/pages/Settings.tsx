@@ -44,6 +44,29 @@ const departmentColors: Record<DepartmentId, string> = {
 
 export default function Settings() {
   const { settings, updateSettings, toggleDepartment, isDepartmentEnabled } = useSettings();
+  const [webhookUnlocked, setWebhookUnlocked] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState(false);
+  const [checkingPassword, setCheckingPassword] = useState(false);
+
+  const handleUnlockWebhook = async () => {
+    setCheckingPassword(true);
+    setPasswordError(false);
+    const { data, error } = await supabase
+      .from('app_config')
+      .select('value')
+      .eq('key', 'webhook_password')
+      .single();
+
+    if (error || !data || data.value !== passwordInput) {
+      setPasswordError(true);
+      setCheckingPassword(false);
+      return;
+    }
+    setWebhookUnlocked(true);
+    setCheckingPassword(false);
+    setPasswordInput('');
+  };
 
   const handleSave = () => {
     toast.success('Configurações salvas com sucesso!');
