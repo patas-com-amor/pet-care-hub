@@ -191,18 +191,42 @@ export default function Settings() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="n8nWebhook">URL do Webhook n8n (WhatsApp)</Label>
-              <Input
-                id="n8nWebhook"
-                value={settings.n8nWebhookUrl}
-                onChange={(e) => updateSettings({ n8nWebhookUrl: e.target.value })}
-                placeholder="https://seu-n8n.com/webhook/..."
-              />
-              <p className="text-xs text-muted-foreground">
-                Usado para enviar notificações via WhatsApp quando o pet estiver pronto
-              </p>
-            </div>
+            {!webhookUnlocked ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  🔒 Esta seção é protegida. Insira a senha de desenvolvedor para visualizar ou alterar a URL do webhook.
+                </p>
+                <div className="flex gap-2 max-w-md">
+                  <Input
+                    type="password"
+                    value={passwordInput}
+                    onChange={(e) => { setPasswordInput(e.target.value); setPasswordError(false); }}
+                    placeholder="Senha de acesso"
+                    onKeyDown={(e) => e.key === 'Enter' && handleUnlockWebhook()}
+                  />
+                  <Button onClick={handleUnlockWebhook} disabled={checkingPassword} variant="outline" className="gap-2">
+                    <Lock className="h-4 w-4" />
+                    Desbloquear
+                  </Button>
+                </div>
+                {passwordError && (
+                  <p className="text-sm text-destructive">Senha incorreta.</p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="n8nWebhook">URL do Webhook n8n (WhatsApp)</Label>
+                <Input
+                  id="n8nWebhook"
+                  value={settings.n8nWebhookUrl}
+                  onChange={(e) => updateSettings({ n8nWebhookUrl: e.target.value })}
+                  placeholder="https://seu-n8n.com/webhook/..."
+                />
+                <p className="text-xs text-muted-foreground">
+                  Usado para enviar notificações via WhatsApp quando o pet estiver pronto
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
